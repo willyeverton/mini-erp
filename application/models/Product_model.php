@@ -9,7 +9,7 @@ class Product_model extends CI_Model {
     }
 
     public function get_products() {
-        $this->db->order_by('created_at', 'DESC');
+        $this->db->order_by('name', 'ASC');
         $query = $this->db->get('products');
         return $query->result_array();
     }
@@ -30,12 +30,29 @@ class Product_model extends CI_Model {
     }
 
     public function delete_product($id) {
-        // Primeiro excluir as variações e estoque relacionados
-        $this->db->delete('variations', array('product_id' => $id));
-        $this->db->delete('stock', array('product_id' => $id));
+        // Excluir variações
+        $this->db->where('product_id', $id);
+        $this->db->delete('product_variations');
 
-        // Depois excluir o produto
-        return $this->db->delete('products', array('id' => $id));
+        // Excluir estoque
+        $this->db->where('product_id', $id);
+        $this->db->delete('stock');
+
+        // Excluir produto
+        $this->db->where('id', $id);
+        return $this->db->delete('products');
+    }
+
+    public function get_variations($product_id) {
+        $this->db->where('product_id', $product_id);
+        $this->db->order_by('name', 'ASC');
+        $query = $this->db->get('product_variations');
+        return $query->result_array();
+    }
+
+    public function get_variation($id) {
+        $query = $this->db->get_where('product_variations', array('id' => $id));
+        return $query->row_array();
     }
 
     public function add_variation($product_id, $name) {
@@ -44,27 +61,42 @@ class Product_model extends CI_Model {
             'name' => $name
         );
 
-        $this->db->insert('variations', $data);
+        $this->db->insert('product_variations', $data);
         return $this->db->insert_id();
     }
 
-    public function update_variation($variation_id, $name) {
-        $data = array('name' => $name);
-        $this->db->where('id', $variation_id);
-        return $this->db->update('variations', $data);
+    public function update_variation($id, $name) {
+        $this->db->where('id', $id);
+        return $this->db->update('product_variations', array('name' => $name));
     }
 
-    public function delete_variation($variation_id) {
-        // Excluir estoque relacionado
-        $this->db->delete('stock', array('variation_id' => $variation_id));
+    public function delete_variation($id) {
+        // Excluir estoque da variação
+        $this->db->where('variation_id', $id);
+        $this->db->delete('stock');
 
         // Excluir variação
-        return $this->db->delete('variations', array('id' => $variation_id));
+        $this->db->where('id', $id);
+        return $this->db->delete('product_variations');
     }
 
-    public function get_variations($product_id) {
-        $this->db->where('product_id', $product_id);
-        $query = $this->db->get('variations');
+    public function search_products($keyword) {
+        $this->db->like('name', $keyword);
+        $this->db->or_like('description', $keyword);
+        $this->db->order_by('name', 'ASC');
+        $query = $this->db->get('products');
+        return $query->result_array();
+    }
+
+    public function get_featured_products($limit = null) {
+        $this->db->where('featured', 1);
+
+        if ($limit) {
+            $this->db->limit($limit);
+        }
+
+        $this->db->order_by('name', 'ASC');
+        $query = $this->db->get('products');
         return $query->result_array();
     }
 }

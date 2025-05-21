@@ -8,55 +8,45 @@ class OAuth_model extends CI_Model {
         $this->load->database();
     }
 
-    public function generate_tokens($user_id) {
-        $access_token = bin2hex(random_bytes(40));
-        $refresh_token = bin2hex(random_bytes(40));
-        $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour'));
+    public function generate_token($user_id) {
+        // Gerar token aleatório
+        $token = bin2hex(random_bytes(32));
 
+        // Definir expiração (1 hora)
+        $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+        // Salvar token no banco
         $data = array(
             'user_id' => $user_id,
-            'access_token' => $access_token,
-            'refresh_token' => $refresh_token,
-            'expires_at' => $expires_at
+            'token' => $token,
+            'expires' => $expires
         );
 
         $this->db->insert('oauth_tokens', $data);
 
-        return array(
-            'access_token' => $access_token,
-            'refresh_token' => $refresh_token,
-            'expires_at' => $expires_at,
-            'token_type' => 'Bearer'
-        );
+        return $token;
     }
 
     public function validate_token($token) {
-        $query = $this->db->get_where('oauth_tokens', array('access_token' => $token));
-        $token_data = $query->row_array();
+        $this->db->where('token', $token);
+        $this->db->where('expires >', date('Y-m-d H:i:s'));
+        $query = $this->db->get('oauth_tokens');
 
-        if ($token_data && strtotime($token_data['expires_at']) > time()) {
-            return $token_data;
-        }
-
-        return false;
+        return $query->row_array();
     }
 
-    public function refresh_token($refresh_token) {
-        $query = $this->db->get_where('oauth_tokens', array('refresh_token' => $refresh_token));
-        $token_data = $query->row_array();
-
-        if ($token_data) {
-            // Invalidar token antigo
-            $this->db->delete('oauth_tokens', array('id' => $token_data['id']));
-
-            // Gerar novo token
-            return $this->generate_tokens($token_data['user_id']);
-        }
-
-        return false;
+    public function revoke_token($token) {
+        $this->db->where('token', $token);
+        return $this->db->delete('oauth_tokens');
     }
 
-    public function invalidate_token($token) {
-        return $this->db->delete('oauth_tokens', array('access_token' => $token));
+    public function revoke_user_tokens($user_id) {
+        $this->db->where('user_id', $user_id);
+        return $this->db->delete('oauth_tokens');
+    }
+
+    public function clean_expired_tokens() {
+        $this->db->where('expires <', date('Y-m-d H:i:s'));
+        return $this->db->delete('oauth_tokens');
     }
 }

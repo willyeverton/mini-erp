@@ -8,6 +8,7 @@ class Dashboard extends MY_Controller {
         $this->load->model('Order_model');
         $this->load->model('Product_model');
         $this->load->model('Stock_model');
+        $this->load->model('User_model');
         $this->load->helper('url');
     }
 
@@ -19,45 +20,79 @@ class Dashboard extends MY_Controller {
 
         $data['title'] = 'Dashboard';
 
-        // Estatísticas para administradores
+        // Dados diferentes para administradores e clientes
         if ($this->user['role'] == 'admin') {
-            // Total de vendas hoje
-            $today = date('Y-m-d');
-            $data['today_sales'] = $this->Order_model->get_sales_report($today, $today);
+            // Estatísticas para administradores
 
-            // Total de vendas este mês
-            $first_day_month = date('Y-m-01');
-            $data['month_sales'] = $this->Order_model->get_sales_report($first_day_month, $today);
+            // Período padrão: últimos 30 dias
+            $end_date = date('Y-m-d');
+            $start_date = date('Y-m-d', strtotime('-30 days'));
+
+            // Permitir filtrar por período
+            if ($this->input->get('start_date') && $this->input->get('end_date')) {
+                $start_date = $this->input->get('start_date');
+                $end_date = $this->input->get('end_date');
+            }
+
+            $data['start_date'] = $start_date;
+            $data['end_date'] = $end_date;
+
+            // Relatório de vendas
+            $data['sales_report'] = $this->Order_model->get_sales_report($start_date, $end_date);
+
+            // Calcular totais
+            $total_orders = 0;
+            $total_revenue = 0;
+
+            foreach ($data['sales_report'] as $day) {
+                $total_orders += $day['orders'];
+                $total_revenue += $day['revenue'];
+            }
+
+            $data['total_orders'] = $total_orders;
+            $data['total_revenue'] = $total_revenue;
 
             // Produtos mais vendidos
-            $data['top_products'] = $this->Order_model->get_top_products(5);
+            $data['top_products'] = $this->Order_model->get_top_products(5, $start_date, $end_date);
 
             // Produtos com estoque baixo
-            $data['low_stock_products'] = $this->get_low_stock_products();
+            $data['low_stock_products'] = $this->Stock_model->get_low_stock_products(5);
 
             // Pedidos recentes
-            $data['recent_orders'] = $this->get_recent_orders(5);
-        } else {
-            // Para usuários normais, mostrar apenas seus pedidos recentes
-            $data['user_orders'] = $this->Order_model->get_user_orders($this->user['id']);
-        }
+            $data['recent_orders'] = array_slice($this->Order_model->get_orders(), 0, 5);
 
-        $this->load->view('templates/header', $data);
-        $this->load->view('dashboard/index', $data);
-        $this->load->view('templates/footer');
+            $this->load->view('templates/header', $data);
+            $this->load->view('templates/sidebar');
+            $this->load->view('dashboard/admin', $data);
+            $this->load->view('templates/footer');
+        } else {
+            // Dashboard para clientes
+            $data['recent_orders'] = array_slice($this->Order_model->get_user_orders($this->user['id']), 0, 5);
+
+            $this->load->view('templates/header', $data);
+            $this->load->view('templates/sidebar');
+            $this->load->view('dashboard/customer', $data);
+            $this->load->view('templates/footer');
+        }
     }
 
     public function reports() {
-        // Verificar se é admin
+        // Verificar permissões de administrador
         if (!$this->user || $this->user['role'] != 'admin') {
-            show_error('You are not authorized to access this page', 403);
+            redirect('auth');
         }
 
         $data['title'] = 'Sales Reports';
 
-        // Filtros de data
-        $start_date = $this->input->get('start_date') ? $this->input->get('start_date') : date('Y-m-01');
-        $end_date = $this->input->get('end_date') ? $this->input->get('end_date') : date('Y-m-d');
+        // Período padrão: últimos 30 dias
+        $end_date = date('Y-m-d');
+        $start_date = date('Y-m-d', strtotime('-30 days'));
+
+        // Permitir filtrar por período
+        if ($this->input->post('start_date') && $this->input->post('end_date')) {
+            $start_date = $this->input->post('start_date');
+            $end_date = $this->input->post('end_date');
+        }
 
         $data['start_date'] = $start_date;
         $data['end_date'] = $end_date;
@@ -65,57 +100,77 @@ class Dashboard extends MY_Controller {
         // Relatório de vendas
         $data['sales_report'] = $this->Order_model->get_sales_report($start_date, $end_date);
 
+        // Calcular totais
+        $total_orders = 0;
+        $total_revenue = 0;
+
+        foreach ($data['sales_report'] as $day) {
+            $total_orders += $day['orders'];
+            $total_revenue += $day['revenue'];
+        }
+
+        $data['total_orders'] = $total_orders;
+        $data['total_revenue'] = $total_revenue;
+
         // Produtos mais vendidos
         $data['top_products'] = $this->Order_model->get_top_products(10, $start_date, $end_date);
 
         $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar');
         $this->load->view('dashboard/reports', $data);
         $this->load->view('templates/footer');
     }
 
-    private function get_low_stock_products($threshold = 5) {
-        $products = $this->Product_model->get_products();
-        $low_stock = array();
+    public function inventory() {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
 
-        foreach ($products as $product) {
+        $data['title'] = 'Inventory Management';
+
+        // Obter todos os produtos com informações de estoque
+        $data['products'] = $this->Product_model->get_products();
+
+        foreach ($data['products'] as &$product) {
             $variations = $this->Product_model->get_variations($product['id']);
 
             if (count($variations) > 0) {
-                foreach ($variations as $variation) {
-                    $stock = $this->Stock_model->get_stock($product['id'], $variation['id']);
+                $product['variations'] = $variations;
 
-                    if ($stock <= $threshold) {
-                        $low_stock[] = array(
-                            'product_id' => $product['id'],
-                            'product_name' => $product['name'],
-                            'variation_id' => $variation['id'],
-                            'variation_name' => $variation['name'],
-                            'stock' => $stock
-                        );
-                    }
+                foreach ($product['variations'] as &$variation) {
+                    $variation['stock'] = $this->Stock_model->get_stock($product['id'], $variation['id']);
                 }
             } else {
-                $stock = $this->Stock_model->get_stock($product['id']);
-
-                if ($stock <= $threshold) {
-                    $low_stock[] = array(
-                        'product_id' => $product['id'],
-                        'product_name' => $product['name'],
-                        'variation_id' => null,
-                        'variation_name' => '',
-                        'stock' => $stock
-                    );
-                }
+                $product['stock'] = $this->Stock_model->get_stock($product['id']);
             }
         }
 
-        return $low_stock;
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar');
+        $this->load->view('dashboard/inventory', $data);
+        $this->load->view('templates/footer');
     }
 
-    private function get_recent_orders($limit = 5) {
-        $this->db->order_by('created_at', 'DESC');
-        $this->db->limit($limit);
-        $query = $this->db->get('orders');
-        return $query->result_array();
+    public function update_stock() {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
+
+        $product_id = $this->input->post('product_id');
+        $variation_id = $this->input->post('variation_id') ? $this->input->post('variation_id') : null;
+        $quantity = $this->input->post('quantity');
+
+        if (!$product_id || $quantity === null) {
+            $this->session->set_flashdata('error', 'Invalid request');
+            redirect('dashboard/inventory');
+            return;
+        }
+
+        $this->Stock_model->update_stock($product_id, $variation_id, $quantity);
+
+        $this->session->set_flashdata('success', 'Stock updated successfully');
+        redirect('dashboard/inventory');
     }
 }

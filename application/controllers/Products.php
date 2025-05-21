@@ -12,15 +12,51 @@ class Products extends MY_Controller {
     }
 
     public function index() {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
+
+        $data['title'] = 'Products Management';
         $data['products'] = $this->Product_model->get_products();
-        $data['title'] = 'Products List';
 
         $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar');
         $this->load->view('products/index', $data);
         $this->load->view('templates/footer');
     }
 
+    public function view($id) {
+        $product = $this->Product_model->get_product($id);
+
+        if (empty($product)) {
+            show_404();
+        }
+
+        $data['title'] = $product['name'];
+        $data['product'] = $product;
+        $data['variations'] = $this->Product_model->get_variations($id);
+
+        // Obter informações de estoque
+        if (count($data['variations']) > 0) {
+            foreach ($data['variations'] as &$variation) {
+                $variation['stock'] = $this->Stock_model->get_stock($id, $variation['id']);
+            }
+        } else {
+            $data['stock'] = $this->Stock_model->get_stock($id);
+        }
+
+        $this->load->view('templates/header', $data);
+        $this->load->view('products/view', $data);
+        $this->load->view('templates/footer');
+    }
+
     public function create() {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
+
         $data['title'] = 'Create Product';
 
         $this->form_validation->set_rules('name', 'Name', 'required');
@@ -28,66 +64,56 @@ class Products extends MY_Controller {
 
         if ($this->form_validation->run() === FALSE) {
             $this->load->view('templates/header', $data);
+            $this->load->view('templates/sidebar');
             $this->load->view('products/create', $data);
             $this->load->view('templates/footer');
         } else {
-            // Upload da imagem, se houver
-            $image = '';
-            if ($_FILES['image']['name']) {
-                $config['upload_path'] = './uploads/products/';
-                $config['allowed_types'] = 'gif|jpg|png|jpeg';
+            // Upload de imagem, se houver
+            $product_image = 'default.jpg';
+
+            if ($_FILES['image']['size'] > 0) {
+                $config['upload_path'] = './assets/images/products/';
+                $config['allowed_types'] = 'gif|jpg|jpeg|png';
                 $config['max_size'] = 2048;
                 $config['encrypt_name'] = TRUE;
 
-                if (!file_exists($config['upload_path'])) {
-                    mkdir($config['upload_path'], 0777, true);
-                }
-
                 $this->load->library('upload', $config);
 
-                if (!$this->upload->do_upload('image')) {
-                    $error = $this->upload->display_errors();
-                    $this->session->set_flashdata('error', $error);
-
-                    $this->load->view('templates/header', $data);
-                    $this->load->view('products/create', $data);
-                    $this->load->view('templates/footer');
-                    return;
-                } else {
-                    $upload_data = $this->upload->data();
-                    $image = $upload_data['file_name'];
+                if ($this->upload->do_upload('image')) {
+                    $image_data = $this->upload->data();
+                    $product_image = $image_data['file_name'];
                 }
             }
 
-            // Salvar produto
             $product_data = array(
                 'name' => $this->input->post('name'),
-                'price' => $this->input->post('price'),
                 'description' => $this->input->post('description'),
-                'image' => $image
+                'price' => $this->input->post('price'),
+                'image' => $product_image,
+                'featured' => $this->input->post('featured') ? 1 : 0
             );
 
             $product_id = $this->Product_model->create_product($product_data);
 
             // Processar variações, se houver
-            $variation_names = $this->input->post('variation_name');
-            $variation_stocks = $this->input->post('variation_stock');
+            $variations = $this->input->post('variations');
+            $stocks = $this->input->post('stocks');
 
-            if ($variation_names && is_array($variation_names)) {
-                foreach ($variation_names as $key => $name) {
-                    if (!empty($name)) {
-                        $variation_id = $this->Product_model->add_variation($product_id, $name);
+            if (!empty($variations)) {
+                foreach ($variations as $key => $variation_name) {
+                    if (!empty($variation_name)) {
+                        $variation_id = $this->Product_model->add_variation($product_id, $variation_name);
 
                         // Adicionar estoque para a variação
-                        if (isset($variation_stocks[$key])) {
-                            $this->Stock_model->update_stock($product_id, $variation_id, $variation_stocks[$key]);
+                        if (isset($stocks[$key])) {
+                            $this->Stock_model->update_stock($product_id, $variation_id, $stocks[$key]);
                         }
                     }
                 }
             } else {
                 // Se não houver variações, adicionar estoque para o produto principal
                 $stock = $this->input->post('stock');
-                if ($stock) {
+                if ($stock !== '') {
                     $this->Stock_model->update_stock($product_id, null, $stock);
                 }
             }
@@ -98,96 +124,105 @@ class Products extends MY_Controller {
     }
 
     public function edit($id) {
-        $data['product'] = $this->Product_model->get_product($id);
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
 
-        if (empty($data['product'])) {
+        $product = $this->Product_model->get_product($id);
+
+        if (empty($product)) {
             show_404();
         }
 
-        $data['variations'] = $this->Product_model->get_variations($id);
         $data['title'] = 'Edit Product';
+        $data['product'] = $product;
+        $data['variations'] = $this->Product_model->get_variations($id);
+
+        // Obter informações de estoque
+        if (count($data['variations']) > 0) {
+            foreach ($data['variations'] as &$variation) {
+                $variation['stock'] = $this->Stock_model->get_stock($id, $variation['id']);
+            }
+        } else {
+            $data['stock'] = $this->Stock_model->get_stock($id);
+        }
 
         $this->form_validation->set_rules('name', 'Name', 'required');
         $this->form_validation->set_rules('price', 'Price', 'required|numeric');
 
         if ($this->form_validation->run() === FALSE) {
             $this->load->view('templates/header', $data);
+            $this->load->view('templates/sidebar');
             $this->load->view('products/edit', $data);
             $this->load->view('templates/footer');
         } else {
-            // Upload da imagem, se houver
-            $image = $data['product']['image'];
-            if ($_FILES['image']['name']) {
-                $config['upload_path'] = './uploads/products/';
-                $config['allowed_types'] = 'gif|jpg|png|jpeg';
+            // Upload de imagem, se houver
+            $product_image = $product['image'];
+
+            if ($_FILES['image']['size'] > 0) {
+                $config['upload_path'] = './assets/images/products/';
+                $config['allowed_types'] = 'gif|jpg|jpeg|png';
                 $config['max_size'] = 2048;
                 $config['encrypt_name'] = TRUE;
 
-                if (!file_exists($config['upload_path'])) {
-                    mkdir($config['upload_path'], 0777, true);
-                }
-
                 $this->load->library('upload', $config);
 
-                if (!$this->upload->do_upload('image')) {
-                    $error = $this->upload->display_errors();
-                    $this->session->set_flashdata('error', $error);
+                if ($this->upload->do_upload('image')) {
+                    $image_data = $this->upload->data();
+                    $product_image = $image_data['file_name'];
 
-                    $this->load->view('templates/header', $data);
-                    $this->load->view('products/edit', $data);
-                    $this->load->view('templates/footer');
-                    return;
-                } else {
-                    // Remover imagem antiga, se existir
-                    if ($image && file_exists('./uploads/products/' . $image)) {
-                        unlink('./uploads/products/' . $image);
+                    // Excluir imagem antiga se não for a padrão
+                    if ($product['image'] != 'default.jpg') {
+                        unlink('./assets/images/products/' . $product['image']);
                     }
-
-                    $upload_data = $this->upload->data();
-                    $image = $upload_data['file_name'];
                 }
             }
 
-            // Atualizar produto
             $product_data = array(
                 'name' => $this->input->post('name'),
-                'price' => $this->input->post('price'),
                 'description' => $this->input->post('description'),
-                'image' => $image
+                'price' => $this->input->post('price'),
+                'image' => $product_image,
+                'featured' => $this->input->post('featured') ? 1 : 0
             );
 
             $this->Product_model->update_product($id, $product_data);
 
             // Atualizar estoque do produto principal
             $stock = $this->input->post('stock');
-            if ($stock !== false) {
+            if ($stock !== '' && count($data['variations']) == 0) {
                 $this->Stock_model->update_stock($id, null, $stock);
             }
 
             // Atualizar variações existentes
-            $existing_variation_ids = $this->input->post('variation_id');
-            $existing_variation_names = $this->input->post('existing_variation_name');
-            $existing_variation_stocks = $this->input->post('existing_variation_stock');
+            $variation_ids = $this->input->post('variation_ids');
+            $variation_names = $this->input->post('variation_names');
+            $variation_stocks = $this->input->post('variation_stocks');
 
-            if ($existing_variation_ids && is_array($existing_variation_ids)) {
-                foreach ($existing_variation_ids as $key => $variation_id) {
-                    $this->Product_model->update_variation($variation_id, $existing_variation_names[$key]);
-                    $this->Stock_model->update_stock($id, $variation_id, $existing_variation_stocks[$key]);
+            if (!empty($variation_ids)) {
+                foreach ($variation_ids as $key => $variation_id) {
+                    if (isset($variation_names[$key]) && !empty($variation_names[$key])) {
+                        $this->Product_model->update_variation($variation_id, $variation_names[$key]);
+
+                        if (isset($variation_stocks[$key])) {
+                            $this->Stock_model->update_stock($id, $variation_id, $variation_stocks[$key]);
+                        }
+                    }
                 }
             }
 
             // Adicionar novas variações
-            $variation_names = $this->input->post('variation_name');
-            $variation_stocks = $this->input->post('variation_stock');
+            $new_variations = $this->input->post('new_variations');
+            $new_stocks = $this->input->post('new_stocks');
 
-            if ($variation_names && is_array($variation_names)) {
-                foreach ($variation_names as $key => $name) {
-                    if (!empty($name)) {
-                        $variation_id = $this->Product_model->add_variation($id, $name);
+            if (!empty($new_variations)) {
+                foreach ($new_variations as $key => $variation_name) {
+                    if (!empty($variation_name)) {
+                        $variation_id = $this->Product_model->add_variation($id, $variation_name);
 
-                        // Adicionar estoque para a variação
-                        if (isset($variation_stocks[$key])) {
-                            $this->Stock_model->update_stock($id, $variation_id, $variation_stocks[$key]);
+                        if (isset($new_stocks[$key])) {
+                            $this->Stock_model->update_stock($id, $variation_id, $new_stocks[$key]);
                         }
                     }
                 }
@@ -199,94 +234,43 @@ class Products extends MY_Controller {
     }
 
     public function delete($id) {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
+
         $product = $this->Product_model->get_product($id);
 
         if (empty($product)) {
             show_404();
         }
 
-        // Remover imagem, se existir
-        if ($product['image'] && file_exists('./uploads/products/' . $product['image'])) {
-            unlink('./uploads/products/' . $product['image']);
+        // Excluir imagem do produto se não for a padrão
+        if ($product['image'] != 'default.jpg') {
+            unlink('./assets/images/products/' . $product['image']);
         }
 
         $this->Product_model->delete_product($id);
+
         $this->session->set_flashdata('success', 'Product deleted successfully');
         redirect('products');
     }
 
-    public function buy($id) {
-        $product = $this->Product_model->get_product($id);
+    public function delete_variation($id) {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
 
-        if (empty($product)) {
+        $variation = $this->Product_model->get_variation($id);
+
+        if (empty($variation)) {
             show_404();
         }
 
-        $variations = $this->Product_model->get_variations($id);
+        $this->Product_model->delete_variation($id);
 
-        // Adicionar ao carrinho
-        $variation_id = $this->input->post('variation_id');
-        $quantity = $this->input->post('quantity') ? $this->input->post('quantity') : 1;
-
-        // Verificar estoque
-        $stock_available = $this->Stock_model->check_stock($id, $variation_id, $quantity);
-
-        if (!$stock_available) {
-            $this->session->set_flashdata('error', 'Insufficient stock');
-            redirect('products/view/' . $id);
-        }
-
-        // Obter carrinho atual
-        $cart = $this->session->userdata('cart') ? $this->session->userdata('cart') : array();
-
-        // Gerar chave única para o item (produto + variação)
-        $item_key = $id . '-' . ($variation_id ? $variation_id : '0');
-
-        // Se o item já existe no carrinho, atualizar quantidade
-        if (isset($cart[$item_key])) {
-            $cart[$item_key]['quantity'] += $quantity;
-        } else {
-            // Adicionar novo item ao carrinho
-            $variation_name = '';
-            if ($variation_id) {
-                foreach ($variations as $var) {
-                    if ($var['id'] == $variation_id) {
-                        $variation_name = $var['name'];
-                        break;
-                    }
-                }
-            }
-
-            $cart[$item_key] = array(
-                'product_id' => $id,
-                'variation_id' => $variation_id,
-                'name' => $product['name'],
-                'variation_name' => $variation_name,
-                'price' => $product['price'],
-                'quantity' => $quantity,
-                'subtotal' => $product['price'] * $quantity
-            );
-        }
-
-        // Atualizar carrinho na sessão
-        $this->session->set_userdata('cart', $cart);
-
-        $this->session->set_flashdata('success', 'Product added to cart');
-        redirect('cart');
-    }
-
-    public function view($id) {
-        $data['product'] = $this->Product_model->get_product($id);
-
-        if (empty($data['product'])) {
-            show_404();
-        }
-
-        $data['variations'] = $this->Product_model->get_variations($id);
-        $data['title'] = $data['product']['name'];
-
-        $this->load->view('templates/header', $data);
-        $this->load->view('products/view', $data);
-        $this->load->view('templates/footer');
+        $this->session->set_flashdata('success', 'Variation deleted successfully');
+        redirect('products/edit/' . $variation['product_id']);
     }
 }

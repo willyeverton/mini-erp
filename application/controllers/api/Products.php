@@ -1,15 +1,22 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Products extends MY_Controller {
+require APPPATH . 'libraries/REST_Controller.php';
+
+class Products extends REST_Controller {
 
     public function __construct() {
         parent::__construct();
         $this->load->model('Product_model');
         $this->load->model('Stock_model');
+
+        // Verificar autenticação para métodos que exigem
+        if ($this->router->method != 'index_get' && $this->router->method != 'view_get') {
+            $this->verify_token();
+        }
     }
 
-    public function index() {
+    public function index_get() {
         $products = $this->Product_model->get_products();
 
         // Adicionar informações de estoque
@@ -27,22 +34,18 @@ class Products extends MY_Controller {
             }
         }
 
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($products));
+        $this->response($products, REST_Controller::HTTP_OK);
     }
 
-    public function view($id) {
+    public function view_get($id) {
         $product = $this->Product_model->get_product($id);
 
-        if (empty($product)) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Product not found']));
+        if (!$product) {
+            $this->response(['error' => 'Product not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
+        // Adicionar variações e estoque
         $variations = $this->Product_model->get_variations($id);
 
         if (count($variations) > 0) {
@@ -55,36 +58,28 @@ class Products extends MY_Controller {
             $product['stock'] = $this->Stock_model->get_stock($id);
         }
 
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($product));
+        $this->response($product, REST_Controller::HTTP_OK);
     }
 
-    public function create() {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function create_post() {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'Permission denied'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
+        $data = $this->post();
 
         if (!isset($data['name']) || !isset($data['price'])) {
-            $this->output
-                ->set_status_header(400)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Name and price are required']));
+            $this->response(['error' => 'Name and price are required'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
         $product_data = array(
             'name' => $data['name'],
             'price' => $data['price'],
-            'description' => isset($data['description']) ? $data['description'] : ''
+            'description' => isset($data['description']) ? $data['description'] : '',
+            'featured' => isset($data['featured']) ? $data['featured'] : 0
         );
 
         $product_id = $this->Product_model->create_product($product_data);
@@ -108,35 +103,24 @@ class Products extends MY_Controller {
 
         $product = $this->Product_model->get_product($product_id);
 
-        $this->output
-            ->set_status_header(201)
-            ->set_content_type('application/json')
-            ->set_output(json_encode($product));
+        $this->response($product, REST_Controller::HTTP_CREATED);
     }
 
-    public function update($id) {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function update_put($id) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'Permission denied'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
         $product = $this->Product_model->get_product($id);
 
-        if (empty($product)) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Product not found']));
+        if (!$product) {
+            $this->response(['error' => 'Product not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
-
+        $data = $this->put();
         $product_data = array();
 
         if (isset($data['name'])) {
@@ -149,6 +133,10 @@ class Products extends MY_Controller {
 
         if (isset($data['description'])) {
             $product_data['description'] = $data['description'];
+        }
+
+        if (isset($data['featured'])) {
+            $product_data['featured'] = $data['featured'];
         }
 
         if (!empty($product_data)) {
@@ -181,6 +169,8 @@ class Products extends MY_Controller {
         }
 
         $updated_product = $this->Product_model->get_product($id);
+
+        // Adicionar variações e estoque
         $variations = $this->Product_model->get_variations($id);
 
         if (count($variations) > 0) {
@@ -193,36 +183,57 @@ class Products extends MY_Controller {
             $updated_product['stock'] = $this->Stock_model->get_stock($id);
         }
 
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($updated_product));
+        $this->response($updated_product, REST_Controller::HTTP_OK);
     }
 
-    public function delete($id) {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function delete_delete($id) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'Permission denied'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
         $product = $this->Product_model->get_product($id);
 
-        if (empty($product)) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Product not found']));
+        if (!$product) {
+            $this->response(['error' => 'Product not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
         $this->Product_model->delete_product($id);
 
-        $this->output
-            ->set_status_header(204)
-            ->set_content_type('application/json')
-            ->set_output(json_encode(null));
+        $this->response(null, REST_Controller::HTTP_NO_CONTENT);
+    }
+
+    private function verify_token() {
+        $headers = $this->input->request_headers();
+
+        if (!isset($headers['Authorization'])) {
+            $this->response(['error' => 'Authorization header required'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
+
+        $token_parts = explode(' ', $headers['Authorization']);
+
+        if (count($token_parts) != 2 || $token_parts[0] != 'Bearer') {
+            $this->response(['error' => 'Invalid authorization format'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
+
+        $this->load->model('OAuth_model');
+        $token_data = $this->OAuth_model->validate_token($token_parts[1]);
+
+        if (!$token_data) {
+            $this->response(['error' => 'Invalid or expired token'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
+
+        $this->load->model('User_model');
+        $this->user = $this->User_model->get_user_by_id($token_data['user_id']);
+
+        if (!$this->user) {
+            $this->response(['error' => 'User not found'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
     }
 }
