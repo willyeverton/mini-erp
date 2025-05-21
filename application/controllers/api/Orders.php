@@ -12,7 +12,7 @@ class Orders extends REST_Controller {
         $this->load->model('Stock_model');
         $this->load->model('Coupon_model');
 
-        // Verificar autenticação
+        // Verificar autenticação para todos os métodos
         $this->verify_token();
     }
 
@@ -37,17 +37,19 @@ class Orders extends REST_Controller {
 
         // Verificar se o pedido pertence ao usuário ou se é admin
         if ($this->user['role'] != 'admin' && $order['user_id'] != $this->user['id']) {
-            $this->response(['error' => 'Permission denied'], REST_Controller::HTTP_FORBIDDEN);
+            $this->response(['error' => 'You do not have permission to view this order'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
-        // Adicionar itens do pedido
         $order['items'] = $this->Order_model->get_order_items($id);
 
         $this->response($order, REST_Controller::HTTP_OK);
     }
 
     public function create_post() {
+        $data = $this->post();
+
+        // Verificar se há itens no carrinho
         $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
 
         if (empty($cart_items)) {
@@ -55,14 +57,13 @@ class Orders extends REST_Controller {
             return;
         }
 
-        $data = $this->post();
-
-        // Validar dados de endereço
-        if (!isset($data['zipcode']) || !isset($data['address']) || !isset($data['city']) || !isset($data['state'])) {
-            $this->response(['error' => 'Address information is incomplete'], REST_Controller::HTTP_BAD_REQUEST);
+        // Validação básica
+        if (!isset($data['address']) || !isset($data['city']) || !isset($data['state']) || !isset($data['zipcode'])) {
+            $this->response(['error' => 'Shipping information is incomplete'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
+        // Calcular subtotal
         $subtotal = $this->Cart_model->get_cart_total($this->user['id']);
 
         // Calcular frete
@@ -75,12 +76,11 @@ class Orders extends REST_Controller {
         $discount = 0;
         $coupon_id = null;
 
-        if (isset($data['coupon_code'])) {
-            $coupon = $this->Coupon_model->validate_coupon($data['coupon_code'], $subtotal);
-
+        if (isset($data['coupon_code']) && !empty($data['coupon_code'])) {
+            $coupon = $this->Coupon_model->get_coupon_by_code($data['coupon_code']);
             if ($coupon) {
-                $discount = $this->Coupon_model->calculate_discount($coupon, $subtotal);
                 $coupon_id = $coupon['id'];
+                $discount = $this->Coupon_model->calculate_discount($coupon, $subtotal);
             }
         }
 
@@ -112,9 +112,9 @@ class Orders extends REST_Controller {
             'coupon_id' => $coupon_id,
             'zipcode' => $data['zipcode'],
             'address' => $data['address'],
-            'number' => isset($data['number']) ? $data['number'] : null,
-            'complement' => isset($data['complement']) ? $data['complement'] : null,
-            'district' => isset($data['district']) ? $data['district'] : null,
+            'number' => isset($data['number']) ? $data['number'] : '',
+            'complement' => isset($data['complement']) ? $data['complement'] : '',
+            'district' => isset($data['district']) ? $data['district'] : '',
             'city' => $data['city'],
             'state' => $data['state'],
             'status' => 'pending'
@@ -142,14 +142,14 @@ class Orders extends REST_Controller {
         // Limpar carrinho
         $this->Cart_model->clear_cart($this->user['id']);
 
-        // Retornar pedido criado
+        // Retornar o pedido criado
         $order = $this->Order_model->get_order($order_id);
         $order['items'] = $this->Order_model->get_order_items($order_id);
 
         $this->response($order, REST_Controller::HTTP_CREATED);
     }
 
-    public function cancel_put($id) {
+    public function cancel_post($id) {
         $order = $this->Order_model->get_order($id);
 
         if (!$order) {
@@ -159,7 +159,7 @@ class Orders extends REST_Controller {
 
         // Verificar se o pedido pertence ao usuário ou se é admin
         if ($this->user['role'] != 'admin' && $order['user_id'] != $this->user['id']) {
-            $this->response(['error' => 'Permission denied'], REST_Controller::HTTP_FORBIDDEN);
+            $this->response(['error' => 'You do not have permission to cancel this order'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
@@ -179,17 +179,13 @@ class Orders extends REST_Controller {
             $this->Stock_model->increase_stock($item['product_id'], $item['variation_id'], $item['quantity']);
         }
 
-        // Retornar pedido atualizado
-        $updated_order = $this->Order_model->get_order($id);
-        $updated_order['items'] = $items;
-
-        $this->response($updated_order, REST_Controller::HTTP_OK);
+        $this->response(['success' => 'Order canceled successfully'], REST_Controller::HTTP_OK);
     }
 
     public function update_status_put($id) {
         // Verificar permissões de administrador
         if ($this->user['role'] != 'admin') {
-            $this->response(['error' => 'Permission denied'], REST_Controller::HTTP_FORBIDDEN);
+            $this->response(['error' => 'You do not have permission to update order status'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
@@ -200,7 +196,14 @@ class Orders extends REST_Controller {
             return;
         }
 
-        $status = $this->put('status');
+        $data = $this->put();
+
+        if (!isset($data['status'])) {
+            $this->response(['error' => 'Status is required'], REST_Controller::HTTP_BAD_REQUEST);
+            return;
+        }
+
+        $status = $data['status'];
 
         if (!in_array($status, array('pending', 'processing', 'shipped', 'delivered', 'canceled'))) {
             $this->response(['error' => 'Invalid status'], REST_Controller::HTTP_BAD_REQUEST);
@@ -216,27 +219,27 @@ class Orders extends REST_Controller {
             }
         }
 
-        // Se estiver reativando um pedido cancelado, reduzir estoque novamente
-        if ($order['status'] == 'canceled' && $status != 'canceled') {
-            $items = $this->Order_model->get_order_items($id);
+        // Atualizar status
+        $this->Order_model->update_order($id, array('status' => $status));
 
-            foreach ($items as $item) {
-                // Verificar se há estoque suficiente
-                if (!$this->Stock_model->check_stock($item['product_id'], $item['variation_id'], $item['quantity'])) {
-                    $this->response(['error' => 'Not enough stock to reactivate this order'], REST_Controller::HTTP_BAD_REQUEST);
-                    return;
-                }
+        // Se estiver atualizando para enviado, adicionar informações de rastreamento, se fornecidas
+        if ($status == 'shipped') {
+            $tracking_data = array();
 
-                $this->Stock_model->decrease_stock($item['product_id'], $item['variation_id'], $item['quantity']);
+            if (isset($data['tracking_number'])) {
+                $tracking_data['tracking_number'] = $data['tracking_number'];
+            }
+
+            if (isset($data['carrier'])) {
+                $tracking_data['carrier'] = $data['carrier'];
+            }
+
+            if (!empty($tracking_data)) {
+                $this->Order_model->update_order($id, $tracking_data);
             }
         }
 
-        $this->Order_model->update_order($id, array('status' => $status));
-
-        // Retornar pedido atualizado
         $updated_order = $this->Order_model->get_order($id);
-        $updated_order['items'] = $this->Order_model->get_order_items($id);
-
         $this->response($updated_order, REST_Controller::HTTP_OK);
     }
 
@@ -244,7 +247,7 @@ class Orders extends REST_Controller {
         $headers = $this->input->request_headers();
 
         if (!isset($headers['Authorization'])) {
-            $this->response(['error' => 'Authorization header required'], REST_Controller::HTTP_UNAUTHORIZED);
+            $this->response(['error' => 'Authorization header not found'], REST_Controller::HTTP_UNAUTHORIZED);
             return;
         }
 

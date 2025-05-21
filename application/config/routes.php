@@ -1,54 +1,27 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-/*
-| -------------------------------------------------------------------------
-| URI ROUTING
-| -------------------------------------------------------------------------
-| This file lets you re-map URI requests to specific controller functions.
-|
-| Typically there is a one-to-one relationship between a URL string
-| and its corresponding controller class/method. The segments in a
-| URL normally follow this pattern:
-|
-|	example.com/class/method/id/
-|
-| In some instances, however, you may want to remap this relationship
-| so that a different class/function is called than the one
-| corresponding to the URL.
-|
-| Please see the user guide for complete details:
-|
-|	https://codeigniter.com/userguide3/general/routing.html
-|
-| -------------------------------------------------------------------------
-| RESERVED ROUTES
-| -------------------------------------------------------------------------
-|
-| There are three reserved routes:
-|
-|	$route['default_controller'] = 'welcome';
-|
-| This route indicates which controller class should be loaded if the
-| URI contains no data. In the above example, the "welcome" class
-| would be loaded.
-|
-|	$route['404_override'] = 'errors/page_missing';
-|
-| This route will tell the Router which controller/method to use if those
-| provided in the URL cannot be matched to a valid route.
-|
-|	$route['translate_uri_dashes'] = FALSE;
-|
-| This is not exactly a route, but allows you to automatically route
-| controller and method names that contain dashes. '-' isn't a valid
-| class or method name character, so it requires translation.
-| When you set this option to TRUE, it will replace ALL dashes in the
-| controller and method URI segments.
-|
-| Examples:	my-controller/index	-> my_controller/index
-|		my-controller/my-method	-> my_controller/my_method
-*/
-$route['default_controller'] = 'welcome';
+// Rotas padrão
+$route['default_controller'] = 'auth';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
+
+// Rotas de autenticação
+$route['register'] = 'auth/register';
+$route['login'] = 'auth';
+$route['logout'] = 'auth/logout';
+$route['reset-password'] = 'auth/reset_password';
+$route['new-password/(:any)'] = 'auth/new_password/$1';
+
+// Rotas da API
+$route['api/token'] = 'auth/token';
+$route['api/products'] = 'api/products';
+$route['api/products/(:num)'] = 'api/products/view/$1';
+$route['api/cart'] = 'api/cart';
+$route['api/cart/add'] = 'api/cart/add';
+$route['api/cart/update'] = 'api/cart/update';
+$route['api/cart/remove/(:num)'] = 'api/cart/remove/$1';
+$route['api/orders'] = 'api/orders';
+$route['api/orders/(:num)'] = 'api/orders/view/$1';
+$route['api/users/profile'] = 'api/users/profile';
+$route['api/users/update'] = 'api/users/update';

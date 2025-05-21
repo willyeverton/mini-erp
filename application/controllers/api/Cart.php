@@ -12,7 +12,7 @@ class Cart extends REST_Controller {
         $this->load->model('Stock_model');
         $this->load->model('Coupon_model');
 
-        // Verificar autenticação
+        // Verificar autenticação para todos os métodos
         $this->verify_token();
     }
 
@@ -26,25 +26,45 @@ class Cart extends REST_Controller {
             $shipping = ($subtotal >= 52 && $subtotal <= 166.59) ? 15 : 20;
         }
 
+        // Verificar cupom na requisição
+        $coupon_code = $this->get('coupon');
+        $discount = 0;
+        $coupon = null;
+
+        if ($coupon_code) {
+            $coupon = $this->Coupon_model->get_coupon_by_code($coupon_code);
+            if ($coupon) {
+                $discount = $this->Coupon_model->calculate_discount($coupon, $subtotal);
+            }
+        }
+
+        // Calcular total
+        $total = $subtotal - $discount + $shipping;
+
         $response = array(
             'items' => $cart_items,
             'subtotal' => $subtotal,
             'shipping' => $shipping,
-            'total' => $subtotal + $shipping
+            'discount' => $discount,
+            'total' => $total,
+            'coupon' => $coupon
         );
 
         $this->response($response, REST_Controller::HTTP_OK);
     }
 
     public function add_post() {
-        $product_id = $this->post('product_id');
-        $quantity = $this->post('quantity') ? $this->post('quantity') : 1;
-        $variation_id = $this->post('variation_id') ? $this->post('variation_id') : null;
+        $data = $this->post();
 
-        if (!$product_id) {
-            $this->response(['error' => 'Product ID is required'], REST_Controller::HTTP_BAD_REQUEST);
+        // Validação básica
+        if (!isset($data['product_id']) || !isset($data['quantity'])) {
+            $this->response(['error' => 'Product ID and quantity are required'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
+
+        $product_id = $data['product_id'];
+        $variation_id = isset($data['variation_id']) ? $data['variation_id'] : null;
+        $quantity = $data['quantity'];
 
         // Verificar se o produto existe
         $product = $this->Product_model->get_product($product_id);
@@ -71,132 +91,106 @@ class Cart extends REST_Controller {
         }
 
         // Adicionar ao carrinho
-        $this->Cart_model->add_to_cart($this->user['id'], $product_id, $quantity, $variation_id);
+        $this->Cart_model->add_to_cart($this->user['id'], $product_id, $variation_id, $quantity, $product['price']);
 
         // Retornar carrinho atualizado
         $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
         $subtotal = $this->Cart_model->get_cart_total($this->user['id']);
 
-        // Calcular frete
-        $shipping = 0;
-        if ($subtotal < 200) {
-            $shipping = ($subtotal >= 52 && $subtotal <= 166.59) ? 15 : 20;
-        }
-
         $response = array(
             'items' => $cart_items,
-            'subtotal' => $subtotal,
-            'shipping' => $shipping,
-            'total' => $subtotal + $shipping
+            'subtotal' => $subtotal
         );
 
         $this->response($response, REST_Controller::HTTP_OK);
     }
 
-    public function update_put($cart_id) {
-        $quantity = $this->put('quantity');
+    public function update_put($id) {
+        $data = $this->put();
 
-        if ($quantity === null) {
+        // Validação básica
+        if (!isset($data['quantity'])) {
             $this->response(['error' => 'Quantity is required'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
-        // Verificar se o item pertence ao usuário
-        $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
-        $item_belongs_to_user = false;
-        $item_data = null;
+        $quantity = $data['quantity'];
 
-        foreach ($cart_items as $item) {
-            if ($item['id'] == $cart_id) {
-                $item_belongs_to_user = true;
-                $item_data = $item;
-                break;
-            }
-        }
+        // Verificar se o item existe no carrinho
+        $cart_item = $this->Cart_model->get_cart_item($id);
 
-        if (!$item_belongs_to_user) {
+        if (!$cart_item || $cart_item['user_id'] != $this->user['id']) {
             $this->response(['error' => 'Cart item not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
+        // Se a quantidade for 0, remover o item
+        if ($quantity <= 0) {
+            $this->Cart_model->remove_from_cart($id);
+
+            // Retornar carrinho atualizado
+            $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
+            $subtotal = $this->Cart_model->get_cart_total($this->user['id']);
+
+            $response = array(
+                'items' => $cart_items,
+                'subtotal' => $subtotal
+            );
+
+            $this->response($response, REST_Controller::HTTP_OK);
+            return;
+        }
+
         // Verificar estoque disponível
-        if (!$this->Stock_model->check_stock($item_data['product_id'], $item_data['variation_id'], $quantity)) {
+        if (!$this->Stock_model->check_stock($cart_item['product_id'], $cart_item['variation_id'], $quantity)) {
             $this->response(['error' => 'Not enough stock available'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
-        $this->Cart_model->update_cart_item($cart_id, $quantity);
+        // Atualizar quantidade
+        $this->Cart_model->update_cart($id, $quantity);
 
         // Retornar carrinho atualizado
         $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
         $subtotal = $this->Cart_model->get_cart_total($this->user['id']);
 
-        // Calcular frete
-        $shipping = 0;
-        if ($subtotal < 200) {
-            $shipping = ($subtotal >= 52 && $subtotal <= 166.59) ? 15 : 20;
-        }
-
         $response = array(
             'items' => $cart_items,
-            'subtotal' => $subtotal,
-            'shipping' => $shipping,
-            'total' => $subtotal + $shipping
+            'subtotal' => $subtotal
         );
 
         $this->response($response, REST_Controller::HTTP_OK);
     }
 
-    public function delete_delete($cart_id) {
-        // Verificar se o item pertence ao usuário
-        $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
-        $item_belongs_to_user = false;
+    public function remove_delete($id) {
+        // Verificar se o item existe no carrinho
+        $cart_item = $this->Cart_model->get_cart_item($id);
 
-        foreach ($cart_items as $item) {
-            if ($item['id'] == $cart_id) {
-                $item_belongs_to_user = true;
-                break;
-            }
-        }
-
-        if (!$item_belongs_to_user) {
+        if (!$cart_item || $cart_item['user_id'] != $this->user['id']) {
             $this->response(['error' => 'Cart item not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
-        $this->Cart_model->remove_from_cart($cart_id);
+        // Remover do carrinho
+        $this->Cart_model->remove_from_cart($id);
 
         // Retornar carrinho atualizado
         $cart_items = $this->Cart_model->get_cart_items($this->user['id']);
         $subtotal = $this->Cart_model->get_cart_total($this->user['id']);
 
-        // Calcular frete
-        $shipping = 0;
-        if ($subtotal < 200) {
-            $shipping = ($subtotal >= 52 && $subtotal <= 166.59) ? 15 : 20;
-        }
-
         $response = array(
             'items' => $cart_items,
-            'subtotal' => $subtotal,
-            'shipping' => $shipping,
-            'total' => $subtotal + $shipping
+            'subtotal' => $subtotal
         );
 
         $this->response($response, REST_Controller::HTTP_OK);
     }
 
     public function clear_delete() {
+        // Limpar carrinho
         $this->Cart_model->clear_cart($this->user['id']);
 
-        $response = array(
-            'items' => array(),
-            'subtotal' => 0,
-            'shipping' => 0,
-            'total' => 0
-        );
-
-        $this->response($response, REST_Controller::HTTP_OK);
+        $this->response(['success' => 'Cart cleared successfully'], REST_Controller::HTTP_OK);
     }
 
     public function apply_coupon_post() {
@@ -238,7 +232,7 @@ class Cart extends REST_Controller {
         $headers = $this->input->request_headers();
 
         if (!isset($headers['Authorization'])) {
-            $this->response(['error' => 'Authorization header required'], REST_Controller::HTTP_UNAUTHORIZED);
+            $this->response(['error' => 'Authorization header not found'], REST_Controller::HTTP_UNAUTHORIZED);
             return;
         }
 

@@ -83,4 +83,43 @@ class User_model extends CI_Model {
         $this->db->where('id', $user_id);
         return $this->db->update('users', $data);
     }
+
+    public function count_users_by_role($role) {
+        $this->db->where('role', $role);
+        return $this->db->count_all_results('users');
+    }
+
+    public function get_customer_acquisition($start_date, $end_date) {
+        // Obter todos os dias no intervalo
+        $days = [];
+        $current = strtotime($start_date);
+        $end = strtotime($end_date);
+
+        while ($current <= $end) {
+            $days[] = date('Y-m-d', $current);
+            $current = strtotime('+1 day', $current);
+        }
+
+        $result = [];
+
+        foreach ($days as $day) {
+            // Contar novos usuários neste dia
+            $this->db->where('DATE(created_at)', $day);
+            $this->db->where('role', 'customer');
+            $new_customers = $this->db->count_all_results('users');
+
+            // Contar total de usuários até este dia
+            $this->db->where('DATE(created_at) <=', $day);
+            $this->db->where('role', 'customer');
+            $total_customers = $this->db->count_all_results('users');
+
+            $result[] = [
+                'date' => $day,
+                'new_customers' => $new_customers,
+                'total_customers' => $total_customers
+            ];
+        }
+
+        return $result;
+    }
 }

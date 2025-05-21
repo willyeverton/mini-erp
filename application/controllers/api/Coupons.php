@@ -1,74 +1,60 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Coupons extends MY_Controller {
+require APPPATH . 'libraries/REST_Controller.php';
+
+class Coupons extends REST_Controller {
 
     public function __construct() {
         parent::__construct();
         $this->load->model('Coupon_model');
+
+        // Verificar autenticação para métodos que requerem
+        if ($this->router->method !== 'validate_post') {
+            $this->verify_token();
+        }
     }
 
-    public function index() {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function index_get() {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'You do not have permission to view all coupons'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
         $coupons = $this->Coupon_model->get_coupons();
-
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($coupons));
+        $this->response($coupons, REST_Controller::HTTP_OK);
     }
 
-    public function view($id) {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function view_get($id) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'You do not have permission to view coupon details'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
         $coupon = $this->Coupon_model->get_coupon($id);
 
-        if (empty($coupon)) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Coupon not found']));
+        if (!$coupon) {
+            $this->response(['error' => 'Coupon not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($coupon));
+        $this->response($coupon, REST_Controller::HTTP_OK);
     }
 
-    public function create() {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function create_post() {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'You do not have permission to create coupons'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
+        $data = $this->post();
 
-        if (!isset($data['code']) || !isset($data['discount']) || !isset($data['type']) ||
-            !isset($data['start_date']) || !isset($data['end_date'])) {
-            $this->output
-                ->set_status_header(400)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Missing required fields']));
+        // Validação básica
+        if (!isset($data['code']) || !isset($data['type']) || !isset($data['discount'])) {
+            $this->response(['error' => 'Code, type and discount are required'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
@@ -76,96 +62,76 @@ class Coupons extends MY_Controller {
         $existing_coupon = $this->Coupon_model->get_coupon_by_code($data['code']);
 
         if ($existing_coupon) {
-            $this->output
-                ->set_status_header(400)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Coupon code already exists']));
+            $this->response(['error' => 'Coupon code already exists'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
         $coupon_data = array(
             'code' => strtoupper($data['code']),
-            'discount' => $data['discount'],
             'type' => $data['type'],
-            'minimum_value' => isset($data['minimum_value']) ? $data['minimum_value'] : 0,
-            'start_date' => $data['start_date'],
-            'end_date' => $data['end_date'],
-            'active' => isset($data['active']) ? $data['active'] : 1
+            'discount' => $data['discount'],
+            'minimum_value' => isset($data['minimum_value']) ? $data['minimum_value'] : 0
         );
 
-        $coupon_id = $this->Coupon_model->create_coupon($coupon_data);
-        $coupon = $this->Coupon_model->get_coupon($coupon_id);
+        // Adicionar data de expiração, se fornecida
+        if (isset($data['expires_at']) && !empty($data['expires_at'])) {
+            $coupon_data['expires_at'] = $data['expires_at'] . ' 23:59:59';
+        }
 
-        $this->output
-            ->set_status_header(201)
-            ->set_content_type('application/json')
-            ->set_output(json_encode($coupon));
+        $coupon_id = $this->Coupon_model->create_coupon($coupon_data);
+
+        $coupon = $this->Coupon_model->get_coupon($coupon_id);
+        $this->response($coupon, REST_Controller::HTTP_CREATED);
     }
 
-    public function update($id) {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function update_put($id) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'You do not have permission to update coupons'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
         $coupon = $this->Coupon_model->get_coupon($id);
 
-        if (empty($coupon)) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Coupon not found']));
+        if (!$coupon) {
+            $this->response(['error' => 'Coupon not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
+        $data = $this->put();
 
         $coupon_data = array();
 
         if (isset($data['code'])) {
-            // Verificar se o novo código já existe (exceto para o cupom atual)
-            if (strtoupper($data['code']) != $coupon['code']) {
-                $existing_coupon = $this->Coupon_model->get_coupon_by_code($data['code']);
+            // Verificar se o código já existe (exceto para o cupom atual)
+            $existing_coupon = $this->Coupon_model->get_coupon_by_code($data['code']);
 
-                if ($existing_coupon) {
-                    $this->output
-                        ->set_status_header(400)
-                        ->set_content_type('application/json')
-                        ->set_output(json_encode(['error' => 'Coupon code already exists']));
-                    return;
-                }
+            if ($existing_coupon && $existing_coupon['id'] != $id) {
+                $this->response(['error' => 'Coupon code already exists'], REST_Controller::HTTP_BAD_REQUEST);
+                return;
             }
 
             $coupon_data['code'] = strtoupper($data['code']);
-        }
-
-        if (isset($data['discount'])) {
-            $coupon_data['discount'] = $data['discount'];
         }
 
         if (isset($data['type'])) {
             $coupon_data['type'] = $data['type'];
         }
 
+        if (isset($data['discount'])) {
+            $coupon_data['discount'] = $data['discount'];
+        }
+
         if (isset($data['minimum_value'])) {
             $coupon_data['minimum_value'] = $data['minimum_value'];
         }
 
-        if (isset($data['start_date'])) {
-            $coupon_data['start_date'] = $data['start_date'];
-        }
-
-        if (isset($data['end_date'])) {
-            $coupon_data['end_date'] = $data['end_date'];
-        }
-
-        if (isset($data['active'])) {
-            $coupon_data['active'] = $data['active'];
+        if (isset($data['expires_at'])) {
+            if (empty($data['expires_at'])) {
+                $coupon_data['expires_at'] = null;
+            } else {
+                $coupon_data['expires_at'] = $data['expires_at'] . ' 23:59:59';
+            }
         }
 
         if (!empty($coupon_data)) {
@@ -173,71 +139,86 @@ class Coupons extends MY_Controller {
         }
 
         $updated_coupon = $this->Coupon_model->get_coupon($id);
-
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($updated_coupon));
+        $this->response($updated_coupon, REST_Controller::HTTP_OK);
     }
 
-    public function delete($id) {
-        // Verificar se é admin
-        if (!$this->user || $this->user['role'] != 'admin') {
-            $this->output
-                ->set_status_header(403)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Unauthorized']));
+    public function delete_delete($id) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            $this->response(['error' => 'You do not have permission to delete coupons'], REST_Controller::HTTP_FORBIDDEN);
             return;
         }
 
         $coupon = $this->Coupon_model->get_coupon($id);
 
-        if (empty($coupon)) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Coupon not found']));
+        if (!$coupon) {
+            $this->response(['error' => 'Coupon not found'], REST_Controller::HTTP_NOT_FOUND);
             return;
         }
 
         $this->Coupon_model->delete_coupon($id);
 
-        $this->output
-            ->set_status_header(204)
-            ->set_content_type('application/json')
-            ->set_output(json_encode(null));
+        $this->response(['success' => 'Coupon deleted successfully'], REST_Controller::HTTP_OK);
     }
 
-    public function validate() {
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
+    public function validate_post() {
+        $data = $this->post();
 
+        // Validação básica
         if (!isset($data['code']) || !isset($data['subtotal'])) {
-            $this->output
-                ->set_status_header(400)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Code and subtotal are required']));
+            $this->response(['error' => 'Code and subtotal are required'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
-        $coupon = $this->Coupon_model->validate_coupon($data['code'], $data['subtotal']);
+        $code = $data['code'];
+        $subtotal = $data['subtotal'];
+
+        $coupon = $this->Coupon_model->validate_coupon($code, $subtotal);
 
         if (!$coupon) {
-            $this->output
-                ->set_status_header(400)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Invalid or expired coupon code']));
+            $this->response(['error' => 'Invalid or expired coupon'], REST_Controller::HTTP_BAD_REQUEST);
             return;
         }
 
-        $discount = $this->Coupon_model->calculate_discount($coupon, $data['subtotal']);
+        $discount = $this->Coupon_model->calculate_discount($coupon, $subtotal);
 
         $response = array(
             'coupon' => $coupon,
             'discount' => $discount
         );
 
-        $this->output
-            ->set_content_type('application/json')
-            ->set_output(json_encode($response));
+        $this->response($response, REST_Controller::HTTP_OK);
+    }
+
+    private function verify_token() {
+        $headers = $this->input->request_headers();
+
+        if (!isset($headers['Authorization'])) {
+            $this->response(['error' => 'Authorization header not found'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
+
+        $token_parts = explode(' ', $headers['Authorization']);
+
+        if (count($token_parts) != 2 || $token_parts[0] != 'Bearer') {
+            $this->response(['error' => 'Invalid authorization format'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
+
+        $this->load->model('OAuth_model');
+        $token_data = $this->OAuth_model->validate_token($token_parts[1]);
+
+        if (!$token_data) {
+            $this->response(['error' => 'Invalid or expired token'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
+
+        $this->load->model('User_model');
+        $this->user = $this->User_model->get_user_by_id($token_data['user_id']);
+
+        if (!$this->user) {
+            $this->response(['error' => 'User not found'], REST_Controller::HTTP_UNAUTHORIZED);
+            return;
+        }
     }
 }

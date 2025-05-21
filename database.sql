@@ -1,42 +1,43 @@
-CREATE DATABASE mini_erp;
+-- Criação do banco de dados
+CREATE DATABASE IF NOT EXISTS mini_erp CHARACTER SET utf8 COLLATE utf8_general_ci;
 
 USE mini_erp;
 
--- Tabela de usuários para autenticação
-CREATE TABLE users (
+-- Tabela de usuários
+CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(100) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'user') DEFAULT 'user',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer',
+  reset_token VARCHAR(64) NULL,
+  reset_token_expires DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de tokens OAuth2
-CREATE TABLE oauth_tokens (
+-- Tabela de tokens OAuth
+CREATE TABLE IF NOT EXISTS oauth_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,
-  access_token VARCHAR(100) NOT NULL,
-  refresh_token VARCHAR(100) NOT NULL,
-  expires_at DATETIME NOT NULL,
+  token VARCHAR(64) NOT NULL UNIQUE,
+  expires DATETIME NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Tabela de produtos
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  description TEXT NULL,
   price DECIMAL(10, 2) NOT NULL,
-  description TEXT,
-  image VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  image VARCHAR(255) DEFAULT 'default.jpg',
+  featured TINYINT(1) DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabela de variações de produtos
-CREATE TABLE variations (
+CREATE TABLE IF NOT EXISTS product_variations (
   id INT AUTO_INCREMENT PRIMARY KEY,
   product_id INT NOT NULL,
   name VARCHAR(100) NOT NULL,
@@ -45,88 +46,97 @@ CREATE TABLE variations (
 );
 
 -- Tabela de estoque
-CREATE TABLE stock (
+CREATE TABLE IF NOT EXISTS stock (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  product_id INT,
-  variation_id INT,
+  product_id INT NOT NULL,
+  variation_id INT NULL,
   quantity INT NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-  FOREIGN KEY (variation_id) REFERENCES variations(id) ON DELETE CASCADE
+  FOREIGN KEY (variation_id) REFERENCES product_variations(id) ON DELETE CASCADE
 );
 
 -- Tabela de cupons
-CREATE TABLE coupons (
+CREATE TABLE IF NOT EXISTS coupons (
   id INT AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(20) NOT NULL UNIQUE,
+  type ENUM('percentage', 'fixed') NOT NULL,
   discount DECIMAL(10, 2) NOT NULL,
-  type ENUM('percentage', 'fixed') DEFAULT 'percentage',
   minimum_value DECIMAL(10, 2) DEFAULT 0,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  expires_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabela de pedidos
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT,
+  user_id INT NOT NULL,
   subtotal DECIMAL(10, 2) NOT NULL,
   discount DECIMAL(10, 2) DEFAULT 0,
   shipping DECIMAL(10, 2) DEFAULT 0,
   total DECIMAL(10, 2) NOT NULL,
-  coupon_id INT,
+  coupon_id INT NULL,
+  zipcode VARCHAR(10) NOT NULL,
+  address VARCHAR(255) NOT NULL,
+  number VARCHAR(20) NULL,
+  complement VARCHAR(100) NULL,
+  district VARCHAR(100) NULL,
+  city VARCHAR(100) NOT NULL,
+  state VARCHAR(2) NOT NULL,
   status ENUM(
     'pending',
-    'paid',
+    'processing',
     'shipped',
     'delivered',
     'canceled'
   ) DEFAULT 'pending',
-  zipcode VARCHAR(9),
-  address VARCHAR(255),
-  number VARCHAR(20),
-  complement VARCHAR(100),
-  district VARCHAR(100),
-  city VARCHAR(100),
-  state VARCHAR(2),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE
-  SET
-    NULL,
-    FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE
   SET
     NULL
 );
 
 -- Tabela de itens do pedido
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
   order_id INT NOT NULL,
   product_id INT NOT NULL,
-  variation_id INT,
+  variation_id INT NULL,
   quantity INT NOT NULL,
-  unit_price DECIMAL(10, 2) NOT NULL,
+  price DECIMAL(10, 2) NOT NULL,
   subtotal DECIMAL(10, 2) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-  FOREIGN KEY (variation_id) REFERENCES variations(id) ON DELETE
+  FOREIGN KEY (product_id) REFERENCES products(id),
+  FOREIGN KEY (variation_id) REFERENCES product_variations(id) ON DELETE
   SET
     NULL
 );
 
--- Inserir um usuário admin padrão (senha: admin123)
+-- Tabela de carrinho
+CREATE TABLE IF NOT EXISTS cart (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  product_id INT NOT NULL,
+  variation_id INT NULL,
+  quantity INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+  FOREIGN KEY (variation_id) REFERENCES product_variations(id) ON DELETE CASCADE
+);
+
+-- Inserir usuário administrador padrão (senha: admin123)
 INSERT INTO
   users (name, email, password, role)
 VALUES
   (
-    'Administrator',
-    'admin@minierp.com',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    'Admin',
+    'admin@example.com',
+    '$2y$10$8WxYR0aA58tBDQEKwl/pEuphYNnEXRwLKy1gfFP9C6YoHy7Y3JKWC',
     'admin'
   );

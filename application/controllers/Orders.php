@@ -260,33 +260,34 @@ class Orders extends MY_Controller {
             }
         }
 
-        // Se estiver reativando um pedido cancelado, verificar estoque
-        if ($order['status'] == 'canceled' && $status != 'canceled') {
-            $items = $this->Order_model->get_order_items($id);
-            $stock_ok = true;
-
-            foreach ($items as $item) {
-                if (!$this->Stock_model->check_stock($item['product_id'], $item['variation_id'], $item['quantity'])) {
-                    $stock_ok = false;
-                    break;
-                }
-            }
-
-            if (!$stock_ok) {
-                $this->session->set_flashdata('error', 'Cannot reactivate order: some items are no longer in stock');
-                redirect('orders/view/' . $id);
-                return;
-            }
-
-            // Reduzir estoque novamente
-            foreach ($items as $item) {
-                $this->Stock_model->decrease_stock($item['product_id'], $item['variation_id'], $item['quantity']);
-            }
-        }
-
+        // Atualizar status do pedido
         $this->Order_model->update_order($id, array('status' => $status));
 
         $this->session->set_flashdata('success', 'Order status updated successfully');
+        redirect('orders/view/' . $id);
+    }
+
+    public function update_tracking($id) {
+        // Verificar permissões de administrador
+        if (!$this->user || $this->user['role'] != 'admin') {
+            redirect('auth');
+        }
+
+        $order = $this->Order_model->get_order($id);
+
+        if (empty($order)) {
+            show_404();
+        }
+
+        $tracking_number = $this->input->post('tracking_number');
+        $carrier = $this->input->post('carrier');
+
+        $this->Order_model->update_order($id, array(
+            'tracking_number' => $tracking_number,
+            'carrier' => $carrier
+        ));
+
+        $this->session->set_flashdata('success', 'Tracking information updated successfully');
         redirect('orders/view/' . $id);
     }
 }

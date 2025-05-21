@@ -99,4 +99,8 @@ class Product_model extends CI_Model {
         $query = $this->db->get('products');
         return $query->result_array();
     }
+
+    public function count_products() {
+        return $this->db->count_all('products');
+    }
 }
