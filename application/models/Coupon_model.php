@@ -134,31 +134,4 @@ class Coupon_model extends CI_Model {
         return $discount;
     }
 
-    // Método a ser adicionado no controlador de pedidos
-    public function apply_coupon() {
-        $this->load->model('Coupon_model');
-
-        $coupon_code = $this->input->post('coupon_code');
-        $cart_total = $this->cart->total();
-
-        $result = $this->Coupon_model->validate_coupon($coupon_code, $cart_total);
-
-        if ($result['valid']) {
-            $coupon = $result['coupon'];
-            $discount = $this->Coupon_model->calculate_discount($coupon, $cart_total);
-
-            // Armazenar o cupom na sessão
-            $this->session->set_userdata('coupon', [
-                'id' => $coupon['id'],
-                'code' => $coupon['code'],
-                'discount' => $discount
-            ]);
-
-            $this->session->set_flashdata('success', 'Cupom aplicado com sucesso! Desconto: R$ ' . number_format($discount, 2, ',', '.'));
-        } else {
-            $this->session->set_flashdata('error', $result['message']);
-        }
-
-        redirect('cart');
-    }
 }
