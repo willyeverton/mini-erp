@@ -9,8 +9,11 @@ class Order_model extends CI_Model {
     }
 
     public function get_orders() {
-        $this->db->order_by('created_at', 'DESC');
-        $query = $this->db->get('orders');
+        $this->db->select('orders.*, users.name as user_name');
+        $this->db->from('orders');
+        $this->db->join('users', 'users.id = orders.user_id', 'left');
+        $this->db->order_by('orders.created_at', 'DESC');
+        $query = $this->db->get();
         return $query->result_array();
     }
 
@@ -22,7 +25,11 @@ class Order_model extends CI_Model {
     }
 
     public function get_order($id) {
-        $query = $this->db->get_where('orders', array('id' => $id));
+        $this->db->select('orders.*, users.name as user_name, users.email as user_email');
+        $this->db->from('orders');
+        $this->db->join('users', 'users.id = orders.user_id', 'left');
+        $this->db->where('orders.id', $id);
+        $query = $this->db->get();
         return $query->row_array();
     }
 

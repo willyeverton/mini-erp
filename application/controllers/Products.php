@@ -12,16 +12,61 @@ class Products extends MY_Controller {
     }
 
     public function index() {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
+        // Remover a restrição de acesso exclusivo para administradores
+        // A autenticação geral já é verificada em MY_Controller
 
-        $data['title'] = 'Products Management';
-        $data['products'] = $this->Product_model->get_products();
+        // Configurar paginação
+        $this->load->library('pagination');
+
+        $config['base_url'] = site_url('products/index');
+        $config['total_rows'] = $this->Product_model->count_products($this->input->get('search'));
+        $config['per_page'] = 10;
+        $config['uri_segment'] = 3;
+        $config['use_page_numbers'] = TRUE;
+        $config['page_query_string'] = TRUE;
+        $config['query_string_segment'] = 'page';
+
+        // Estilo da paginação (Bootstrap)
+        $config['full_tag_open'] = '<ul class="pagination">';
+        $config['full_tag_close'] = '</ul>';
+        $config['first_link'] = 'First';
+        $config['last_link'] = 'Last';
+        $config['first_tag_open'] = '<li class="page-item">';
+        $config['first_tag_close'] = '</li>';
+        $config['prev_link'] = '&laquo';
+        $config['prev_tag_open'] = '<li class="page-item">';
+        $config['prev_tag_close'] = '</li>';
+        $config['next_link'] = '&raquo';
+        $config['next_tag_open'] = '<li class="page-item">';
+        $config['next_tag_close'] = '</li>';
+        $config['last_tag_open'] = '<li class="page-item">';
+        $config['last_tag_close'] = '</li>';
+        $config['cur_tag_open'] = '<li class="page-item active"><a class="page-link" href="#">';
+        $config['cur_tag_close'] = '</a></li>';
+        $config['num_tag_open'] = '<li class="page-item">';
+        $config['num_tag_close'] = '</li>';
+        $config['attributes'] = array('class' => 'page-link');
+
+        $this->pagination->initialize($config);
+
+        // Obter página atual
+        $page = $this->input->get('page') ? $this->input->get('page') : 1;
+        $offset = ($page - 1) * $config['per_page'];
+
+        // Obter dados dos produtos com busca
+        $data['products'] = $this->Product_model->get_products(
+            $config['per_page'],
+            $offset,
+            $this->input->get('search')
+        );
+
+        $data['title'] = 'Products';
+        $data['user'] = $this->user;
+        $data['pagination'] = $this->pagination->create_links();
+        $data['search'] = $this->input->get('search');
 
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('products/index', $data);
         $this->load->view('templates/footer');
     }
@@ -36,6 +81,7 @@ class Products extends MY_Controller {
         $data['title'] = $product['name'];
         $data['product'] = $product;
         $data['variations'] = $this->Product_model->get_variations($id);
+        $data['user'] = $this->user;
 
         // Obter informações de estoque
         if (count($data['variations']) > 0) {
@@ -46,9 +92,13 @@ class Products extends MY_Controller {
             $data['stock'] = $this->Stock_model->get_stock($id);
         }
 
+        // Registrar scripts específicos para esta página
+        $data['scripts'] = ['products' => 'stock.js'];
+
         $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('products/view', $data);
-        $this->load->view('templates/footer');
+        $this->load->view('templates/footer', $data);
     }
 
     public function create() {
@@ -63,13 +113,16 @@ class Products extends MY_Controller {
         $this->form_validation->set_rules('price', 'Price', 'required|numeric');
 
         if ($this->form_validation->run() === FALSE) {
+            // Adicione o usuário aos dados
+            $data['user'] = $this->user;
+
             $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('products/create', $data);
             $this->load->view('templates/footer');
         } else {
-            // Upload de imagem, se houver
-            $product_image = 'default.jpg';
+
+            $product_image = '';
 
             if ($_FILES['image']['size'] > 0) {
                 $config['upload_path'] = './assets/images/products/';
@@ -152,8 +205,11 @@ class Products extends MY_Controller {
         $this->form_validation->set_rules('price', 'Price', 'required|numeric');
 
         if ($this->form_validation->run() === FALSE) {
+            // Adicione o usuário aos dados
+            $data['user'] = $this->user;
+
             $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('products/edit', $data);
             $this->load->view('templates/footer');
         } else {
@@ -171,11 +227,6 @@ class Products extends MY_Controller {
                 if ($this->upload->do_upload('image')) {
                     $image_data = $this->upload->data();
                     $product_image = $image_data['file_name'];
-
-                    // Excluir imagem antiga se não for a padrão
-                    if ($product['image'] != 'default.jpg') {
-                        unlink('./assets/images/products/' . $product['image']);
-                    }
                 }
             }
 
@@ -243,11 +294,6 @@ class Products extends MY_Controller {
 
         if (empty($product)) {
             show_404();
-        }
-
-        // Excluir imagem do produto se não for a padrão
-        if ($product['image'] != 'default.jpg') {
-            unlink('./assets/images/products/' . $product['image']);
         }
 
         $this->Product_model->delete_product($id);

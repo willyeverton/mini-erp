@@ -31,7 +31,7 @@
                         <i class="fas fa-user"></i> <?= $this->session->userdata('name'); ?>
                     </a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                        <a class="dropdown-item" href="<?= base_url('users/profile'); ?>">
+                        <a class="dropdown-item" href="<?= base_url('users/view/' . $this->session->userdata('user_id')); ?>">
                             <i class="fas fa-user-circle"></i> Profile
                         </a>
                         <div class="dropdown-divider"></div>

@@ -43,7 +43,7 @@
                         <p class="mb-0">Status: <span class="badge badge-<?= $order['status'] == 'pending' ? 'warning' : ($order['status'] == 'canceled' ? 'danger' : 'success'); ?>"><?= ucfirst($order['status']); ?></span></p>
                         <p class="mb-0">Payment Method: Credit Card</p>
 
-                        <?php if($this->user['role'] == 'admin'): ?>
+                        <?php if($user['role'] == 'admin'): ?>
                             <h6 class="mt-3">Customer Information</h6>
                             <p class="mb-0">Name: <?= $order['user_name']; ?></p>
                             <p class="mb-0">Email: <?= $order['user_email']; ?></p>
@@ -115,7 +115,7 @@
                     </a>
                 <?php endif; ?>
 
-                <?php if($this->user['role'] == 'admin' && $order['status'] != 'canceled'): ?>
+                <?php if($user['role'] == 'admin' && $order['status'] != 'canceled'): ?>
                     <?= form_open('orders/update_status/' . $order['id'], ['class' => 'mt-3']); ?>
                         <div class="form-group">
                             <label for="status">Update Status</label>
@@ -144,7 +144,7 @@
                     <p class="mb-0">Tracking Number: <?= isset($order['tracking_number']) ? $order['tracking_number'] : 'Not available'; ?></p>
                     <p class="mb-0">Carrier: <?= isset($order['carrier']) ? $order['carrier'] : 'Not available'; ?></p>
 
-                    <?php if($this->user['role'] == 'admin'): ?>
+                    <?php if($user['role'] == 'admin'): ?>
                         <?= form_open('orders/update_tracking/' . $order['id'], ['class' => 'mt-3']); ?>
                             <div class="form-group">
                                 <label for="tracking_number">Tracking Number</label>

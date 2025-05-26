@@ -28,8 +28,11 @@ class Orders extends MY_Controller {
             $data['orders'] = $this->Order_model->get_user_orders($this->user['id']);
         }
 
+        // Adicione o usuário aos dados
+        $data['user'] = $this->user;
+
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('orders/index', $data);
         $this->load->view('templates/footer');
     }
@@ -57,8 +60,11 @@ class Orders extends MY_Controller {
         $data['order'] = $order;
         $data['items'] = $this->Order_model->get_order_items($id);
 
+        // Adicione o usuário aos dados
+        $data['user'] = $this->user;
+
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('orders/view', $data);
         $this->load->view('templates/footer');
     }
@@ -104,7 +110,11 @@ class Orders extends MY_Controller {
         $this->form_validation->set_rules('state', 'State', 'required');
 
         if ($this->form_validation->run() === FALSE) {
+            // Adicione o usuário aos dados
+            $data['user'] = $this->user;
+
             $this->load->view('templates/header', $data);
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('orders/checkout', $data);
             $this->load->view('templates/footer');
         } else {
@@ -186,7 +196,11 @@ class Orders extends MY_Controller {
         $data['order'] = $order;
         $data['items'] = $this->Order_model->get_order_items($order_id);
 
+        // Adicione o usuário aos dados
+        $data['user'] = $this->user;
+
         $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('orders/success', $data);
         $this->load->view('templates/footer');
     }

@@ -21,6 +21,7 @@ class Cart extends MY_Controller {
         $data['title'] = 'Shopping Cart';
         $data['cart_items'] = $this->Cart_model->get_cart_items($this->user['id']);
         $data['subtotal'] = $this->Cart_model->get_cart_total($this->user['id']);
+        $data['user'] = $this->user;
 
         // Verificar cupom na sessão
         $data['discount'] = 0;
@@ -40,6 +41,7 @@ class Cart extends MY_Controller {
         $data['total'] = $data['subtotal'] - $data['discount'] + $data['shipping'];
 
         $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('cart/index', $data);
         $this->load->view('templates/footer');
     }
@@ -158,9 +160,23 @@ class Cart extends MY_Controller {
         }
 
         // Salvar cupom na sessão
-        $this->session->set_userdata('coupon', $coupon);
+        if ($coupon['valid']) {
+            $coupon_data = $coupon['coupon'];
 
-        $this->session->set_flashdata('success', 'Coupon applied successfully');
+            // Store more comprehensive coupon data in session
+            $this->session->set_userdata('coupon', [
+                'id' => $coupon_data['id'],
+                'code' => $coupon_data['code'],
+                'type' => $coupon_data['type'],  // Added
+                'discount_type' => $coupon_data['type'],  // Added alias for model compatibility
+                'discount' => $coupon_data['discount'],
+                'discount_amount' => $coupon_data['discount'],  // Added alias for model compatibility
+                'max_discount' => $coupon_data['max_discount'] ?? 0
+            ]);
+
+            $this->session->set_flashdata('success', 'Coupon applied successfully');
+        }
+
         redirect('cart');
     }
 

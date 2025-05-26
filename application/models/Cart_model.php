@@ -72,7 +72,7 @@ class Cart_model extends CI_Model {
     }
 
     public function get_cart_total($user_id) {
-        $this->db->select_sum('products.price * cart.quantity', 'total');
+        $this->db->select('SUM(products.price * cart.quantity) as total', FALSE);
         $this->db->from('cart');
         $this->db->join('products', 'products.id = cart.product_id');
         $this->db->where('cart.user_id', $user_id);

@@ -142,3 +142,26 @@ body {
   height: 250px;
   margin: 0 auto;
 }
+
+/* Adicione estas regras ao seu arquivo style.css */
+.navbar-nav .dropdown-menu {
+  position: absolute !important;
+  z-index: 1030 !important;
+  float: none;
+  margin-top: 0;
+}
+
+.navbar-dark .dropdown-menu {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Específico para a navbar do seu mini-erp */
+.navbar-dark.bg-dark .navbar-nav .dropdown-menu {
+  overflow: visible !important;
+}
+
+/* Garante que o navbar mantenha sua altura */
+.navbar.navbar-dark.bg-dark {
+  height: auto !important;
+  min-height: 56px;
+}

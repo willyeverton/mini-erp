@@ -12,6 +12,7 @@ $route['login'] = 'auth';
 $route['logout'] = 'auth/logout';
 $route['reset-password'] = 'auth/reset_password';
 $route['new-password/(:any)'] = 'auth/new_password/$1';
+$route['dashboard'] = 'dashboard';
 
 // Rotas da API
 $route['api/token'] = 'auth/token';

@@ -1,0 +1,24 @@
+# Configurações do PHP
+php_value error_reporting 22519
+
+# Configurações de sessão
+php_value session.use_only_cookies 1
+php_value session.use_trans_sid 0
+
+# Configurações de output buffering - Corrigido para um valor numérico
+php_value output_buffering 4096
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Não aplicar regras a arquivos ou diretórios existentes
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Importante: Adicionar a condição para evitar loop infinito
+    RewriteCond %{REQUEST_URI} !^/index\.php
+
+    # Redirecionar para index.php
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>

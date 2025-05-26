@@ -21,7 +21,7 @@
                             Orders
                         </a>
                     </li>
-                    <?php if ($this->user && $this->user['role'] == 'admin'): ?>
+                    <?php if ($user && $user['role'] == 'admin'): ?>
                         <li class="nav-item">
                             <a class="nav-link <?= $this->router->fetch_class() == 'users' ? 'active' : ''; ?>" href="<?= base_url('users'); ?>">
                                 <i class="fas fa-users"></i>
@@ -37,7 +37,7 @@
                     <?php endif; ?>
                 </ul>
 
-                <?php if ($this->user && $this->user['role'] == 'admin'): ?>
+                <?php if ($user && $user['role'] == 'admin'): ?>
                     <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
                         <span>Reports</span>
                     </h6>

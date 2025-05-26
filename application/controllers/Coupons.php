@@ -6,130 +6,241 @@ class Coupons extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('Coupon_model');
-        $this->load->helper('url');
         $this->load->library('form_validation');
-    }
+        $this->load->helper(['url', 'form']);
 
-    public function index() {
         // Verificar permissões de administrador
         if (!$this->user || $this->user['role'] != 'admin') {
             redirect('auth');
         }
+    }
 
-        $data['title'] = 'Coupons Management';
-        $data['coupons'] = $this->Coupon_model->get_coupons();
+    public function index() {
+        // Configurar paginação
+        $this->load->library('pagination');
 
+        $config['base_url'] = site_url('coupons/index');
+        $config['total_rows'] = $this->Coupon_model->count_coupons($this->input->get('search'));
+        $config['per_page'] = 10;
+        $config['uri_segment'] = 3;
+        $config['use_page_numbers'] = TRUE;
+        $config['page_query_string'] = TRUE;
+        $config['query_string_segment'] = 'page';
+
+        // Estilo da paginação (Bootstrap)
+        $config['full_tag_open'] = '<ul class="pagination">';
+        $config['full_tag_close'] = '</ul>';
+        $config['first_link'] = 'Primeiro';
+        $config['last_link'] = 'Último';
+        $config['first_tag_open'] = '<li class="page-item">';
+        $config['first_tag_close'] = '</li>';
+        $config['prev_link'] = '&laquo';
+        $config['prev_tag_open'] = '<li class="page-item">';
+        $config['prev_tag_close'] = '</li>';
+        $config['next_link'] = '&raquo';
+        $config['next_tag_open'] = '<li class="page-item">';
+        $config['next_tag_close'] = '</li>';
+        $config['last_tag_open'] = '<li class="page-item">';
+        $config['last_tag_close'] = '</li>';
+        $config['cur_tag_open'] = '<li class="page-item active"><a class="page-link" href="#">';
+        $config['cur_tag_close'] = '</a></li>';
+        $config['num_tag_open'] = '<li class="page-item">';
+        $config['num_tag_close'] = '</li>';
+        $config['attributes'] = array('class' => 'page-link');
+
+        $this->pagination->initialize($config);
+
+        // Obter página atual
+        $page = $this->input->get('page') ? $this->input->get('page') : 1;
+        $offset = ($page - 1) * $config['per_page'];
+
+        // Obter dados dos cupons
+        $data['coupons'] = $this->Coupon_model->get_coupons(
+            $config['per_page'],
+            $offset,
+            $this->input->get('search')
+        );
+
+        $data['title'] = 'Gerenciamento de Cupons';
+        $data['user'] = $this->user;
+        $data['pagination'] = $this->pagination->create_links();
+        $data['search'] = $this->input->get('search');
+
+        // Carregar as views
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('coupons/index', $data);
         $this->load->view('templates/footer');
     }
 
     public function create() {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
+        $data['title'] = 'Adicionar Novo Cupom';
+        $data['user'] = $this->user;
 
-        $data['title'] = 'Create Coupon';
-
-        $this->form_validation->set_rules('code', 'Code', 'required|is_unique[coupons.code]');
-        $this->form_validation->set_rules('type', 'Type', 'required|in_list[percentage,fixed]');
-        $this->form_validation->set_rules('discount', 'Discount', 'required|numeric|greater_than[0]');
-        $this->form_validation->set_rules('minimum_value', 'Minimum Value', 'numeric|greater_than_equal_to[0]');
+        // Regras de validação
+        $this->form_validation->set_rules('code', 'Código', 'required|is_unique[coupons.code]');
+        $this->form_validation->set_rules('discount_type', 'Tipo de Desconto', 'required');
+        $this->form_validation->set_rules('discount_amount', 'Valor do Desconto', 'required|numeric|greater_than[0]');
 
         if ($this->form_validation->run() === FALSE) {
+            $data['scripts'] = ['coupons' => 'form.js'];
+
             $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('coupons/create', $data);
             $this->load->view('templates/footer');
         } else {
-            $coupon_data = array(
+            // Preparar dados para inserção
+            $coupon_data = [
                 'code' => strtoupper($this->input->post('code')),
-                'type' => $this->input->post('type'),
-                'discount' => $this->input->post('discount'),
-                'minimum_value' => $this->input->post('minimum_value') ? $this->input->post('minimum_value') : 0
-            );
+                'description' => $this->input->post('description'),
+                'type' => $this->input->post('discount_type'),
+                'discount' => $this->input->post('discount_amount'),
+                'max_discount' => $this->input->post('max_discount') ? $this->input->post('max_discount') : 0,
+                'minimum_value' => $this->input->post('min_purchase') ? $this->input->post('min_purchase') : 0,
+                'usage_limit' => $this->input->post('usage_limit') ? $this->input->post('usage_limit') : 0,
+                'usage_count' => 0,
+                'start_date' => $this->input->post('start_date') ? $this->input->post('start_date') : NULL,
+                'expires_at' => $this->input->post('end_date') ? $this->input->post('end_date') . ' 23:59:59' : NULL,
+                'active' => $this->input->post('active') ? 1 : 0
+            ];
 
-            // Adicionar data de expiração, se fornecida
-            if ($this->input->post('expires_at')) {
-                $coupon_data['expires_at'] = $this->input->post('expires_at') . ' 23:59:59';
+            // Salvar cupom
+            if ($this->Coupon_model->create_coupon($coupon_data)) {
+                $this->session->set_flashdata('success', 'Cupom adicionado com sucesso.');
+            } else {
+                $this->session->set_flashdata('error', 'Erro ao adicionar cupom.');
             }
 
-            $this->Coupon_model->create_coupon($coupon_data);
-
-            $this->session->set_flashdata('success', 'Coupon created successfully');
             redirect('coupons');
         }
     }
 
-    public function edit($id) {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
-
-        $coupon = $this->Coupon_model->get_coupon($id);
-
-        if (empty($coupon)) {
+    public function edit($id = NULL) {
+        if (!$id) {
             show_404();
         }
 
-        $data['title'] = 'Edit Coupon';
-        $data['coupon'] = $coupon;
+        // Obter dados do cupom
+        $coupon_data = $this->Coupon_model->get_coupon_by_id($id);
 
-        $this->form_validation->set_rules('code', 'Code', 'required');
-        $this->form_validation->set_rules('type', 'Type', 'required|in_list[percentage,fixed]');
-        $this->form_validation->set_rules('discount', 'Discount', 'required|numeric|greater_than[0]');
-        $this->form_validation->set_rules('minimum_value', 'Minimum Value', 'numeric|greater_than_equal_to[0]');
+        if (!$coupon_data) {
+            show_404();
+        }
+
+        $data['title'] = 'Editar Cupom';
+        $data['user'] = $this->user;
+        $data['coupon'] = $coupon_data;
+
+        // Regras de validação
+        $this->form_validation->set_rules('code', 'Código', 'required');
+        $this->form_validation->set_rules('discount_type', 'Tipo de Desconto', 'required');
+        $this->form_validation->set_rules('discount_amount', 'Valor do Desconto', 'required|numeric|greater_than[0]');
 
         // Verificar se o código foi alterado
-        if ($this->input->post('code') != $coupon['code']) {
-            $this->form_validation->set_rules('code', 'Code', 'is_unique[coupons.code]');
+        if ($this->input->post('code') != $coupon_data['code']) {
+            $this->form_validation->set_rules('code', 'Código', 'required|is_unique[coupons.code]');
         }
 
         if ($this->form_validation->run() === FALSE) {
+            $data['scripts'] = ['coupons' => 'form.js'];
+
             $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('coupons/edit', $data);
             $this->load->view('templates/footer');
         } else {
-            $coupon_data = array(
+            // Preparar dados para atualização
+            $update_data = [
                 'code' => strtoupper($this->input->post('code')),
-                'type' => $this->input->post('type'),
-                'discount' => $this->input->post('discount'),
-                'minimum_value' => $this->input->post('minimum_value') ? $this->input->post('minimum_value') : 0
-            );
+                'description' => $this->input->post('description'),
+                'type' => $this->input->post('discount_type'), // Campo no DB é 'type'
+                'discount' => $this->input->post('discount_amount'), // Campo no DB é 'discount'
+                'max_discount' => $this->input->post('max_discount') ? $this->input->post('max_discount') : 0,
+                'minimum_value' => $this->input->post('min_purchase') ? $this->input->post('min_purchase') : 0, // Campo no DB é 'minimum_value'
+                'usage_limit' => $this->input->post('usage_limit') ? $this->input->post('usage_limit') : 0,
+                'usage_count' => isset($coupon_data['usage_count']) ? $coupon_data['usage_count'] : 0,
+                'start_date' => $this->input->post('start_date') ? $this->input->post('start_date') : NULL,
+                'expires_at' => $this->input->post('end_date') ? $this->input->post('end_date') . ' 23:59:59' : NULL, // Campo no DB é 'expires_at'
+                'active' => $this->input->post('active') ? 1 : 0
+            ];
 
-            // Adicionar data de expiração, se fornecida
-            if ($this->input->post('expires_at')) {
-                $coupon_data['expires_at'] = $this->input->post('expires_at') . ' 23:59:59';
+            // Atualizar cupom
+            if ($this->Coupon_model->update_coupon($id, $update_data)) {
+                $this->session->set_flashdata('success', 'Cupom atualizado com sucesso.');
             } else {
-                $coupon_data['expires_at'] = null;
+                $this->session->set_flashdata('error', 'Erro ao atualizar cupom.');
             }
 
-            $this->Coupon_model->update_coupon($id, $coupon_data);
-
-            $this->session->set_flashdata('success', 'Coupon updated successfully');
             redirect('coupons');
         }
     }
 
-    public function delete($id) {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
-
-        $coupon = $this->Coupon_model->get_coupon($id);
-
-        if (empty($coupon)) {
+    public function delete($id = NULL) {
+        if (!$id) {
             show_404();
         }
 
-        $this->Coupon_model->delete_coupon($id);
+        // Obter dados do cupom
+        $coupon_data = $this->Coupon_model->get_coupon_by_id($id);
 
-        $this->session->set_flashdata('success', 'Coupon deleted successfully');
+        if (!$coupon_data) {
+            show_404();
+        }
+
+        // Excluir cupom
+        if ($this->Coupon_model->delete_coupon($id)) {
+            $this->session->set_flashdata('success', 'Cupom excluído com sucesso.');
+        } else {
+            $this->session->set_flashdata('error', 'Erro ao excluir cupom.');
+        }
+
+        redirect('coupons');
+    }
+
+    public function view($id = NULL) {
+        if (!$id) {
+            show_404();
+        }
+
+        // Obter dados do cupom
+        $coupon_data = $this->Coupon_model->get_coupon_by_id($id);
+
+        if (!$coupon_data) {
+            show_404();
+        }
+
+        $data['title'] = 'Detalhes do Cupom';
+        $data['user'] = $this->user;
+        $data['coupon'] = $coupon_data;
+
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('coupons/view', $data);
+        $this->load->view('templates/footer');
+    }
+
+    public function toggle_status($id = NULL) {
+        if (!$id) {
+            show_404();
+        }
+
+        // Obter dados do cupom
+        $coupon = $this->Coupon_model->get_coupon_by_id($id);
+
+        if (!$coupon) {
+            show_404();
+        }
+
+        // Alternar status ativo/inativo
+        $new_status = $coupon['active'] ? 0 : 1;
+
+        if ($this->Coupon_model->update_coupon($id, ['active' => $new_status])) {
+            $this->session->set_flashdata('success', 'Status do cupom alterado com sucesso.');
+        } else {
+            $this->session->set_flashdata('error', 'Erro ao alterar status do cupom.');
+        }
+
         redirect('coupons');
     }
 }

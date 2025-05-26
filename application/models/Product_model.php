@@ -8,10 +8,19 @@ class Product_model extends CI_Model {
         $this->load->database();
     }
 
-    public function get_products() {
+    public function get_products($limit = NULL, $offset = NULL, $search = NULL) {
+        if ($search) {
+            $this->db->like('name', $search);
+            $this->db->or_like('description', $search);
+        }
+
         $this->db->order_by('name', 'ASC');
-        $query = $this->db->get('products');
-        return $query->result_array();
+
+        if ($limit !== NULL) {
+            return $this->db->get('products', $limit, $offset)->result_array();
+        }
+
+        return $this->db->get('products')->result_array();
     }
 
     public function get_product($id) {
@@ -100,7 +109,12 @@ class Product_model extends CI_Model {
         return $query->result_array();
     }
 
-    public function count_products() {
-        return $this->db->count_all('products');
+    public function count_products($search = NULL) {
+        if ($search) {
+            $this->db->like('name', $search);
+            $this->db->or_like('description', $search);
+        }
+
+        return $this->db->count_all_results('products');
     }
 }

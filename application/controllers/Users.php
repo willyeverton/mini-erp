@@ -6,180 +6,219 @@ class Users extends MY_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('User_model');
-        $this->load->helper('url');
         $this->load->library('form_validation');
-    }
+        $this->load->helper(['url', 'form']);
 
-    public function index() {
         // Verificar permissões de administrador
         if (!$this->user || $this->user['role'] != 'admin') {
             redirect('auth');
         }
+    }
 
-        $data['title'] = 'Users Management';
-        $data['users'] = $this->User_model->get_users();
+    public function index() {
+        // Configurar paginação
+        $this->load->library('pagination');
 
+        $config['base_url'] = site_url('users/index');
+        $config['total_rows'] = $this->User_model->count_users($this->input->get('search'));
+        $config['per_page'] = 10;
+        $config['uri_segment'] = 3;
+        $config['use_page_numbers'] = TRUE;
+        $config['page_query_string'] = TRUE;
+        $config['query_string_segment'] = 'page';
+
+        // Estilo da paginação (Bootstrap)
+        $config['full_tag_open'] = '<ul class="pagination">';
+        $config['full_tag_close'] = '</ul>';
+        $config['first_link'] = 'Primeiro';
+        $config['last_link'] = 'Último';
+        $config['first_tag_open'] = '<li class="page-item">';
+        $config['first_tag_close'] = '</li>';
+        $config['prev_link'] = '&laquo';
+        $config['prev_tag_open'] = '<li class="page-item">';
+        $config['prev_tag_close'] = '</li>';
+        $config['next_link'] = '&raquo';
+        $config['next_tag_open'] = '<li class="page-item">';
+        $config['next_tag_close'] = '</li>';
+        $config['last_tag_open'] = '<li class="page-item">';
+        $config['last_tag_close'] = '</li>';
+        $config['cur_tag_open'] = '<li class="page-item active"><a class="page-link" href="#">';
+        $config['cur_tag_close'] = '</a></li>';
+        $config['num_tag_open'] = '<li class="page-item">';
+        $config['num_tag_close'] = '</li>';
+        $config['attributes'] = array('class' => 'page-link');
+
+        $this->pagination->initialize($config);
+
+        // Obter página atual
+        $page = $this->input->get('page') ? $this->input->get('page') : 1;
+        $offset = ($page - 1) * $config['per_page'];
+
+        // Obter dados dos usuários
+        $data['users'] = $this->User_model->get_users(
+            $config['per_page'],
+            $offset,
+            $this->input->get('search')
+        );
+
+        $data['title'] = 'Gerenciamento de Usuários';
+        $data['user'] = $this->user;
+        $data['pagination'] = $this->pagination->create_links();
+        $data['search'] = $this->input->get('search');
+
+        // Carregar as views
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('users/index', $data);
         $this->load->view('templates/footer');
     }
 
     public function create() {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
+        $data['title'] = 'Adicionar Novo Usuário';
+        $data['user'] = $this->user;
 
-        $data['title'] = 'Create User';
-
-        $this->form_validation->set_rules('name', 'Name', 'required');
+        // Regras de validação
+        $this->form_validation->set_rules('name', 'Nome', 'required');
         $this->form_validation->set_rules('email', 'Email', 'required|valid_email|is_unique[users.email]');
-        $this->form_validation->set_rules('password', 'Password', 'required|min_length[6]');
-        $this->form_validation->set_rules('role', 'Role', 'required|in_list[admin,customer]');
+        $this->form_validation->set_rules('password', 'Senha', 'required|min_length[6]');
+        $this->form_validation->set_rules('confirm_password', 'Confirmar Senha', 'required|matches[password]');
+        $this->form_validation->set_rules('role', 'Função', 'required');
 
         if ($this->form_validation->run() === FALSE) {
             $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('users/create', $data);
             $this->load->view('templates/footer');
         } else {
-            $user_data = array(
+            // Preparar dados para inserção
+            $user_data = [
                 'name' => $this->input->post('name'),
                 'email' => $this->input->post('email'),
-                'password' => password_hash($this->input->post('password'), PASSWORD_DEFAULT),
-                'role' => $this->input->post('role')
-            );
+                'password' => $this->input->post('password'),
+                'role' => $this->input->post('role'),
+                'created_at' => date('Y-m-d H:i:s')
+            ];
 
-            $this->User_model->create_user($user_data);
+            // Salvar usuário
+            if ($this->User_model->create_user($user_data)) {
+                $this->session->set_flashdata('success', 'Usuário adicionado com sucesso.');
+            } else {
+                $this->session->set_flashdata('error', 'Erro ao adicionar usuário.');
+            }
 
-            $this->session->set_flashdata('success', 'User created successfully');
             redirect('users');
         }
     }
 
-    public function edit($id) {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
-
-        $user = $this->User_model->get_user_by_id($id);
-
-        if (empty($user)) {
+    public function edit($id = NULL) {
+        if (!$id) {
             show_404();
         }
 
-        $data['title'] = 'Edit User';
-        $data['user'] = $user;
+        // Obter dados do usuário
+        $user_data = $this->User_model->get_user_by_id($id);
 
-        $this->form_validation->set_rules('name', 'Name', 'required');
+        if (!$user_data) {
+            show_404();
+        }
+
+        $data['title'] = 'Editar Usuário';
+        $data['user'] = $this->user;
+        $data['user_data'] = $user_data;
+
+        // Regras de validação
+        $this->form_validation->set_rules('name', 'Nome', 'required');
         $this->form_validation->set_rules('email', 'Email', 'required|valid_email');
-        $this->form_validation->set_rules('role', 'Role', 'required|in_list[admin,customer]');
 
         // Verificar se o email foi alterado
-        if ($this->input->post('email') != $user['email']) {
-            $this->form_validation->set_rules('email', 'Email', 'is_unique[users.email]');
+        if ($this->input->post('email') != $user_data['email']) {
+            $this->form_validation->set_rules('email', 'Email', 'required|valid_email|is_unique[users.email]');
         }
+
+        // Senha é opcional na edição
+        if ($this->input->post('password')) {
+            $this->form_validation->set_rules('password', 'Senha', 'min_length[6]');
+            $this->form_validation->set_rules('confirm_password', 'Confirmar Senha', 'matches[password]');
+        }
+
+        $this->form_validation->set_rules('role', 'Função', 'required');
 
         if ($this->form_validation->run() === FALSE) {
             $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
+            $this->load->view('templates/sidebar', $data);
             $this->load->view('users/edit', $data);
             $this->load->view('templates/footer');
         } else {
-            $user_data = array(
+            // Preparar dados para atualização
+            $update_data = [
                 'name' => $this->input->post('name'),
                 'email' => $this->input->post('email'),
                 'role' => $this->input->post('role')
-            );
+            ];
 
-            // Atualizar senha apenas se fornecida
+            // Incluir senha apenas se fornecida
             if ($this->input->post('password')) {
-                $user_data['password'] = password_hash($this->input->post('password'), PASSWORD_DEFAULT);
+                $update_data['password'] = $this->input->post('password');
             }
 
-            $this->User_model->update_user($id, $user_data);
+            // Atualizar usuário
+            if ($this->User_model->update_user($id, $update_data)) {
+                $this->session->set_flashdata('success', 'Usuário atualizado com sucesso.');
+            } else {
+                $this->session->set_flashdata('error', 'Erro ao atualizar usuário.');
+            }
 
-            $this->session->set_flashdata('success', 'User updated successfully');
             redirect('users');
         }
     }
 
-    public function delete($id) {
-        // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
-        }
-
-        $user = $this->User_model->get_user_by_id($id);
-
-        if (empty($user)) {
+    public function delete($id = NULL) {
+        if (!$id) {
             show_404();
         }
 
-        // Não permitir excluir o próprio usuário
-        if ($user['id'] == $this->user['id']) {
-            $this->session->set_flashdata('error', 'You cannot delete your own account');
-            redirect('users');
-            return;
+        // Obter dados do usuário
+        $user_data = $this->User_model->get_user_by_id($id);
+
+        if (!$user_data) {
+            show_404();
         }
 
-        $this->User_model->delete_user($id);
+        // Verificar se não está excluindo o próprio usuário logado
+        if ($user_data['id'] == $this->user['id']) {
+            $this->session->set_flashdata('error', 'Você não pode excluir seu próprio usuário.');
+            redirect('users');
+        }
 
-        $this->session->set_flashdata('success', 'User deleted successfully');
+        // Excluir usuário
+        if ($this->User_model->delete_user($id)) {
+            $this->session->set_flashdata('success', 'Usuário excluído com sucesso.');
+        } else {
+            $this->session->set_flashdata('error', 'Erro ao excluir usuário.');
+        }
+
         redirect('users');
     }
 
-    public function profile() {
-        // Verificar se o usuário está logado
-        if (!$this->user) {
-            redirect('auth');
+    public function view($id = NULL) {
+        if (!$id) {
+            show_404();
         }
 
-        $data['title'] = 'My Profile';
+        // Obter dados do usuário
+        $user_data = $this->User_model->get_user_by_id($id);
+
+        if (!$user_data) {
+            show_404();
+        }
+
+        $data['title'] = 'Detalhes do Usuário';
         $data['user'] = $this->user;
+        $data['user_data'] = $user_data;
 
-        $this->form_validation->set_rules('name', 'Name', 'required');
-        $this->form_validation->set_rules('current_password', 'Current Password', 'callback_verify_password');
-
-        if ($this->input->post('new_password')) {
-            $this->form_validation->set_rules('new_password', 'New Password', 'required|min_length[6]');
-            $this->form_validation->set_rules('confirm_password', 'Confirm Password', 'required|matches[new_password]');
-        }
-
-        if ($this->form_validation->run() === FALSE) {
-            $this->load->view('templates/header', $data);
-            $this->load->view('templates/sidebar');
-            $this->load->view('users/profile', $data);
-            $this->load->view('templates/footer');
-        } else {
-            $user_data = array(
-                'name' => $this->input->post('name')
-            );
-
-            // Atualizar senha apenas se fornecida
-            if ($this->input->post('new_password')) {
-                $user_data['password'] = password_hash($this->input->post('new_password'), PASSWORD_DEFAULT);
-            }
-
-            $this->User_model->update_user($this->user['id'], $user_data);
-
-            // Atualizar dados da sessão
-            $updated_user = $this->User_model->get_user_by_id($this->user['id']);
-            $this->session->set_userdata('name', $updated_user['name']);
-
-            $this->session->set_flashdata('success', 'Profile updated successfully');
-            redirect('users/profile');
-        }
-    }
-
-    // Callback para verificar senha atual
-    public function verify_password($password) {
-        if (!password_verify($password, $this->user['password'])) {
-            $this->form_validation->set_message('verify_password', 'The {field} is incorrect');
-            return FALSE;
-        }
-        return TRUE;
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('users/view', $data);
+        $this->load->view('templates/footer');
     }
 }

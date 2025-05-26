@@ -1,5 +1,5 @@
 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><?= $this->user['role'] == 'admin' ? 'All Orders' : 'My Orders'; ?></h1>
+    <h1 class="h2"><?= $user['role'] == 'admin' ? 'All Orders' : 'My Orders'; ?></h1>
 </div>
 
 <?php if($this->session->flashdata('success')): ?>
@@ -19,7 +19,7 @@
         <?php if(empty($orders)): ?>
             <div class="alert alert-info">
                 No orders found.
-                <?php if($this->user['role'] != 'admin'): ?>
+                <?php if($user['role'] != 'admin'): ?>
                     <a href="<?= base_url('products'); ?>">Start shopping</a>.
                 <?php endif; ?>
             </div>
@@ -29,7 +29,7 @@
                     <thead>
                         <tr>
                             <th>Order #</th>
-                            <?php if($this->user['role'] == 'admin'): ?>
+                            <?php if($user['role'] == 'admin'): ?>
                                 <th>Customer</th>
                             <?php endif; ?>
                             <th>Date</th>
@@ -42,7 +42,7 @@
                         <?php foreach($orders as $order): ?>
                             <tr>
                                 <td><?= $order['id']; ?></td>
-                                <?php if($this->user['role'] == 'admin'): ?>
+                                <?php if($user['role'] == 'admin'): ?>
                                     <td><?= $order['user_name']; ?></td>
                                 <?php endif; ?>
                                 <td><?= date('M d, Y', strtotime($order['created_at'])); ?></td>

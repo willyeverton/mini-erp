@@ -133,9 +133,18 @@
                         <div class="alert alert-success">
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <strong><?= $coupon['code']; ?></strong>
+                                    <strong><?= isset($coupon['code']) ? $coupon['code'] : 'Coupon'; ?></strong>
                                     <p class="mb-0 small">
-                                        <?= $coupon['type'] == 'percentage' ? $coupon['discount'] . '% off' : '$' . number_format($coupon['discount'], 2) . ' off'; ?>
+                                        <?php
+                                        $coupon_type = isset($coupon['type']) ? $coupon['type'] :
+                                                      (isset($coupon['discount_type']) ? $coupon['discount_type'] : 'fixed');
+                                        $discount_value = isset($coupon['discount']) ? $coupon['discount'] :
+                                                      (isset($coupon['discount_amount']) ? $coupon['discount_amount'] : 0);
+
+                                        echo $coupon_type == 'percentage' ?
+                                            $discount_value . '% off' :
+                                            number_format($discount_value, 2) . ' off';
+                                        ?>
                                     </p>
                                 </div>
                                 <a href="<?= base_url('cart/remove_coupon'); ?>" class="btn btn-sm btn-outline-danger">

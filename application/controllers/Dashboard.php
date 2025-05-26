@@ -13,7 +13,7 @@ class Dashboard extends MY_Controller {
 
         // Verificar permissões de administrador
         if (!$this->user || $this->user['role'] != 'admin') {
-            redirect('auth');
+            redirect('customer');
         }
     }
 
@@ -55,8 +55,21 @@ class Dashboard extends MY_Controller {
         // Produtos com estoque baixo
         $data['low_stock_products'] = $this->Stock_model->get_low_stock_products(5);
 
+        // Adicione o usuário aos dados
+        $data['user'] = $this->user;
+
+        // Preparar dados para os gráficos
+        $data['chart_data'] = [
+            'salesLabels' => json_encode($data['sales_data']['labels']),
+            'salesData' => json_encode($data['sales_data']['revenue']),
+            'statusLabels' => json_encode($data['order_status_data']['labels']),
+            'statusData' => json_encode($data['order_status_data']['data'])
+        ];
+
+        $data['scripts'] = ['dashboard' => 'charts.js'];
+
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('dashboard/index', $data);
         $this->load->view('templates/footer');
     }
@@ -84,8 +97,20 @@ class Dashboard extends MY_Controller {
         // Dados para gráfico de aquisição de clientes
         $data['customer_data'] = $this->get_customer_acquisition_data($data['start_date'], $data['end_date']);
 
+        // Adicione o usuário aos dados
+        $data['user'] = $this->user;
+
+        // Preparar dados para os gráficos
+        $data['chart_data'] = [
+            'salesReportLabels' => json_encode(array_column($data['sales_report'], 'date')),
+            'salesReportRevenue' => json_encode(array_column($data['sales_report'], 'revenue')),
+            'salesReportOrders' => json_encode(array_column($data['sales_report'], 'orders'))
+        ];
+
+        $data['scripts'] = ['dashboard' => 'reports.js'];
+
         $this->load->view('templates/header', $data);
-        $this->load->view('templates/sidebar');
+        $this->load->view('templates/sidebar', $data);
         $this->load->view('dashboard/reports', $data);
         $this->load->view('templates/footer');
     }

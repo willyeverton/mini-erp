@@ -16,6 +16,7 @@ class Auth extends CI_Controller {
         // Se já estiver logado, redirecionar para o dashboard
         if ($this->session->userdata('logged_in')) {
             redirect('dashboard');
+            return;
         }
 
         $data['title'] = 'Login';

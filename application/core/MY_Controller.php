@@ -7,6 +7,8 @@ class MY_Controller extends CI_Controller {
 
     public function __construct() {
         parent::__construct();
+
+        $this->load->helper('url');
         $this->load->model('OAuth_model');
         $this->load->model('User_model');
         $this->load->library('session');
@@ -38,7 +40,7 @@ class MY_Controller extends CI_Controller {
         }
 
         // Se não estiver autenticado e a rota exigir autenticação
-        if ($this->router->class != 'auth' && $this->router->method != 'token') {
+        if ($this->router->class != 'auth' && $this->router->method != 'token' && $this->router->method != 'login') {
             if ($this->input->is_ajax_request() || strpos($this->router->class, 'api') === 0) {
                 // Resposta para API
                 $this->output

@@ -1,139 +1,169 @@
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2"><?= $product['name']; ?></h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <?php if($this->session->userdata('role') == 'admin'): ?>
-            <a href="<?= base_url('products/edit/' . $product['id']); ?>" class="btn btn-sm btn-outline-primary mr-2">
-                <i class="fas fa-edit"></i> Edit
-            </a>
-        <?php endif; ?>
-        <a href="<?= base_url('products'); ?>" class="btn btn-sm btn-outline-secondary">
-            <i class="fas fa-arrow-left"></i> Back to Products
-        </a>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <img src="<?= base_url('assets/images/products/' . $product['image']); ?>" class="card-img-top" alt="<?= $product['name']; ?>">
-            <div class="card-body">
-                <h5 class="card-title"><?= $product['name']; ?></h5>
-                <h6 class="card-subtitle mb-2 text-muted">$<?= number_format($product['price'], 2); ?></h6>
-
-                <?php if($product['featured']): ?>
-                    <span class="badge badge-success">Featured</span>
-                <?php endif; ?>
-
-                <p class="card-text mt-3"><?= nl2br($product['description']); ?></p>
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><?= $product['name'] ?></h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="<?= site_url('dashboard') ?>">Home</a></li>
+                        <li class="breadcrumb-item"><a href="<?= site_url('products') ?>">Products</a></li>
+                        <li class="breadcrumb-item active"><?= $product['name'] ?></li>
+                    </ol>
+                </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Product Details</h5>
-            </div>
-            <div class="card-body">
-                <?= form_open('cart/add'); ?>
-                    <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
-
-                    <?php if(!empty($variations)): ?>
-                        <div class="form-group">
-                            <label for="variation_id">Select Variation</label>
-                            <select name="variation_id" class="form-control" required>
-                                <option value="">-- Select --</option>
-                                <?php foreach($variations as $variation): ?>
-                                    <option value="<?= $variation['id']; ?>">
-                                        <?= $variation['name']; ?>
-                                        (<?php if($variation['stock'] <= 0): ?>Out of Stock<?php else: ?>In Stock: <?= $variation['stock']; ?><?php endif; ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <img src="<?= base_url('assets/images/products/' . $product['image']); ?>" class="img-fluid mb-3" alt="<?= $product['name']; ?>">
+                            <h3><?= $product['name']; ?></h3>
+                            <h4 class="text-primary">$<?= number_format($product['price'], 2); ?></h4>
+                            <?php if($product['featured']): ?>
+                                <span class="badge badge-success">Featured</span>
+                            <?php endif; ?>
                         </div>
-                    <?php else: ?>
-                        <div class="form-group">
-                            <label>Stock</label>
-                            <p><?php if(isset($stock) && $stock > 0): ?><span class="badge badge-success">In Stock: <?= $stock; ?></span><?php else: ?><span class="badge badge-danger">Out of Stock</span><?php endif; ?></p>
-                        </div>
-                    <?php endif; ?>
-
-                    <div class="form-group">
-                        <label for="quantity">Quantity</label>
-                        <input type="number" name="quantity" class="form-control" min="1" value="1" max="<?= isset($stock) ? $stock : ''; ?>">
                     </div>
 
-                    <button type="submit" class="btn btn-primary" <?= (isset($stock) && $stock <= 0) || (empty($stock) && empty($variations)) ? 'disabled' : ''; ?>>
-                        <i class="fas fa-cart-plus"></i> Add to Cart
-                    </button>
-                <?= form_close(); ?>
-            </div>
-        </div>
-
-        <?php if($this->session->userdata('role') == 'admin'): ?>
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Stock Management</h5>
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h3 class="card-title">Description</h3>
+                        </div>
+                        <div class="card-body">
+                            <?= nl2br(htmlspecialchars($product['description'])); ?>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <?php if(!empty($variations)): ?>
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Variation</th>
-                                        <th>Stock</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach($variations as $variation): ?>
-                                        <tr>
-                                            <td><?= $variation['name']; ?></td>
-                                            <td>
-                                                <?php if($variation['stock'] <= 0): ?>
-                                                    <span class="badge badge-danger">Out of Stock</span>
-                                                <?php else: ?>
-                                                    <span class="badge badge-success"><?= $variation['stock']; ?></span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-primary update-stock"
-                                                        data-product-id="<?= $product['id']; ?>"
-                                                        data-variation-id="<?= $variation['id']; ?>"
-                                                        data-current-stock="<?= $variation['stock']; ?>">
-                                                    <i class="fas fa-sync-alt"></i> Update Stock
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Product Details</h3>
                         </div>
-                    <?php else: ?>
-                        <div class="form-group">
-                            <label>Current Stock</label>
-                            <p>
-                                <?php if(isset($stock) && $stock > 0): ?>
-                                    <span class="badge badge-success"><?= $stock; ?></span>
+                        <div class="card-body">
+                            <?= form_open('cart/add'); ?>
+                                <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+
+                                <?php if(!empty($variations)): ?>
+                                    <div class="form-group">
+                                        <label for="variation_id">Select Variation</label>
+                                        <select name="variation_id" class="form-control" required>
+                                            <option value="">-- Select --</option>
+                                            <?php foreach($variations as $variation): ?>
+                                                <option value="<?= $variation['id']; ?>">
+                                                    <?= $variation['name']; ?>
+                                                    (<?php if($variation['stock'] <= 0): ?>Out of Stock<?php else: ?>In Stock: <?= $variation['stock']; ?><?php endif; ?>)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
                                 <?php else: ?>
-                                    <span class="badge badge-danger">Out of Stock</span>
+                                    <div class="form-group">
+                                        <label>Stock</label>
+                                        <p>
+                                            <?php if(isset($stock) && $stock > 0): ?>
+                                                <span class="badge badge-success">In Stock: <?= $stock; ?></span>
+                                            <?php else: ?>
+                                                <span class="badge badge-danger">Out of Stock</span>
+                                            <?php endif; ?>
+                                        </p>
+                                    </div>
                                 <?php endif; ?>
-                            </p>
+
+                                <div class="form-group">
+                                    <label for="quantity">Quantity</label>
+                                    <input type="number" name="quantity" class="form-control" min="1" value="1" max="<?= isset($stock) ? $stock : ''; ?>">
+                                </div>
+
+                                <button type="submit" class="btn btn-primary" <?= (isset($stock) && $stock <= 0) || (empty($stock) && empty($variations)) ? 'disabled' : ''; ?>>
+                                    <i class="fas fa-cart-plus"></i> Add to Cart
+                                </button>
+                            <?= form_close(); ?>
                         </div>
-                        <button type="button" class="btn btn-primary update-stock"
-                                data-product-id="<?= $product['id']; ?>"
-                                data-variation-id=""
-                                data-current-stock="<?= isset($stock) ? $stock : 0; ?>">
-                            <i class="fas fa-sync-alt"></i> Update Stock
-                        </button>
+                    </div>
+
+                    <?php if($user && $user['role'] == 'admin'): ?>
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h3 class="card-title">Stock Management</h3>
+                            </div>
+                            <div class="card-body">
+                                <?php if(!empty($variations)): ?>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Variation</th>
+                                                    <th>Stock</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach($variations as $variation): ?>
+                                                    <tr>
+                                                        <td><?= $variation['name']; ?></td>
+                                                        <td>
+                                                            <?php if($variation['stock'] <= 0): ?>
+                                                                <span class="badge badge-danger">Out of Stock</span>
+                                                            <?php else: ?>
+                                                                <span class="badge badge-success"><?= $variation['stock']; ?></span>
+                                                            <?php endif; ?>
+                                                        </td>
+                                                        <td>
+                                                            <button type="button" class="btn btn-sm btn-primary update-stock"
+                                                                    data-product-id="<?= $product['id']; ?>"
+                                                                    data-variation-id="<?= $variation['id']; ?>"
+                                                                    data-current-stock="<?= $variation['stock']; ?>">
+                                                                <i class="fas fa-sync-alt"></i> Update Stock
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="form-group">
+                                        <label>Current Stock</label>
+                                        <p>
+                                            <?php if(isset($stock) && $stock > 0): ?>
+                                                <span class="badge badge-success"><?= $stock; ?></span>
+                                            <?php else: ?>
+                                                <span class="badge badge-danger">Out of Stock</span>
+                                            <?php endif; ?>
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-primary update-stock"
+                                            data-product-id="<?= $product['id']; ?>"
+                                            data-variation-id=""
+                                            data-current-stock="<?= isset($stock) ? $stock : 0; ?>">
+                                        <i class="fas fa-sync-alt"></i> Update Stock
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                            <div class="card-footer">
+                                <a href="<?= site_url('products/edit/' . $product['id']); ?>" class="btn btn-warning">
+                                    <i class="fas fa-edit"></i> Edit Product
+                                </a>
+                                <a href="<?= site_url('products/delete/' . $product['id']); ?>" class="btn btn-danger float-right" onclick="return confirm('Are you sure you want to delete this product?');">
+                                    <i class="fas fa-trash"></i> Delete Product
+                                </a>
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
-        <?php endif; ?>
-    </div>
+        </div>
+    </section>
 </div>
 
+<?php if($user && $user['role'] == 'admin'): ?>
 <!-- Stock Update Modal -->
 <div class="modal fade" id="stockModal" tabindex="-1" role="dialog" aria-labelledby="stockModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -176,3 +206,4 @@
         </div>
     </div>
 </div>
+<?php endif; ?>

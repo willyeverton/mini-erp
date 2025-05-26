@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS products (
   name VARCHAR(100) NOT NULL,
   description TEXT NULL,
   price DECIMAL(10, 2) NOT NULL,
-  image VARCHAR(255) DEFAULT 'default.jpg',
+  image VARCHAR(255) NULL,
   featured TINYINT(1) DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -61,10 +61,16 @@ CREATE TABLE IF NOT EXISTS stock (
 CREATE TABLE IF NOT EXISTS coupons (
   id INT AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(20) NOT NULL UNIQUE,
+  description TEXT NULL,
   type ENUM('percentage', 'fixed') NOT NULL,
   discount DECIMAL(10, 2) NOT NULL,
+  max_discount DECIMAL(10, 2) DEFAULT 0,
   minimum_value DECIMAL(10, 2) DEFAULT 0,
+  usage_limit INT DEFAULT 0,
+  usage_count INT DEFAULT 0,
+  start_date DATE NULL,
   expires_at DATETIME NULL,
+  active TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -137,6 +143,6 @@ VALUES
   (
     'Admin',
     'admin@example.com',
-    '$2y$10$8WxYR0aA58tBDQEKwl/pEuphYNnEXRwLKy1gfFP9C6YoHy7Y3JKWC',
+    '$2y$10$m03VKqz.xZh0wbqgM9eJp.Qlw0V9oAGlCr.6RNrA58Bq3CZ.P19.G',
     'admin'
   );

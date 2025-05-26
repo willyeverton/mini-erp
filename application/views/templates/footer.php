@@ -1,34 +1,38 @@
-</div>
+</div> <!-- Fim da row -->
 
-    <footer class="bg-dark text-white py-4 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5>Mini ERP</h5>
-                    <p>A simple ERP system with e-commerce capabilities.</p>
+<div class="row">
+    <div class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+        <footer class="bg-dark text-white py-4 mt-5">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Mini ERP</h5>
+                        <p>A simple ERP system with e-commerce capabilities.</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h5>Links</h5>
+                        <ul class="list-unstyled">
+                            <li><a href="<?= base_url(); ?>" class="text-white">Home</a></li>
+                            <li><a href="<?= base_url('products'); ?>" class="text-white">Products</a></li>
+                            <li><a href="<?= base_url('orders'); ?>" class="text-white">Orders</a></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-3">
+                        <h5>Contact</h5>
+                        <address>
+                            <p>123 Main Street<br>City, State 12345</p>
+                            <p>Email: info@minierp.com<br>Phone: (123) 456-7890</p>
+                        </address>
+                    </div>
                 </div>
-                <div class="col-md-3">
-                    <h5>Links</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="<?= base_url(); ?>" class="text-white">Home</a></li>
-                        <li><a href="<?= base_url('products'); ?>" class="text-white">Products</a></li>
-                        <li><a href="<?= base_url('contact'); ?>" class="text-white">Contact</a></li>
-                    </ul>
-                </div>
-                <div class="col-md-3">
-                    <h5>Contact</h5>
-                    <address>
-                        <p>123 Main Street<br>City, State 12345</p>
-                        <p>Email: info@minierp.com<br>Phone: (123) 456-7890</p>
-                    </address>
+                <hr>
+                <div class="text-center">
+                    <p>&copy; <?= date('Y'); ?> Mini ERP. All rights reserved.</p>
                 </div>
             </div>
-            <hr>
-            <div class="text-center">
-                <p>&copy; <?= date('Y'); ?> Mini ERP. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
+        </footer>
+    </div>
+</div>
 
     <!-- jQuery and Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -36,6 +40,19 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <!-- Custom JS -->
-    <script src="<?= base_url('assets/js/script.js'); ?>"></script>
+    <script src="<?= base_url('assets/js/scripts.js'); ?>"></script>
+
+    <!-- Page specific scripts -->
+    <?php if(isset($scripts) && is_array($scripts)): ?>
+        <?php foreach($scripts as $folder => $script): ?>
+            <?php if(is_array($script)): ?>
+                <?php foreach($script as $js_file): ?>
+                    <script src="<?= base_url('assets/js/' . $folder . '/' . $js_file); ?>"></script>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <script src="<?= base_url('assets/js/' . $folder . '/' . $script); ?>"></script>
+            <?php endif; ?>
+        <?php endforeach; ?>
+    <?php endif; ?>
 </body>
 </html>
