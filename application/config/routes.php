@@ -12,17 +12,6 @@ $route['login'] = 'auth';
 $route['logout'] = 'auth/logout';
 $route['reset-password'] = 'auth/reset_password';
 $route['new-password/(:any)'] = 'auth/new_password/$1';
-$route['dashboard'] = 'dashboard';
 
-// Rotas da API
-$route['api/token'] = 'auth/token';
-$route['api/products'] = 'api/products';
-$route['api/products/(:num)'] = 'api/products/view/$1';
-$route['api/cart'] = 'api/cart';
-$route['api/cart/add'] = 'api/cart/add';
-$route['api/cart/update'] = 'api/cart/update';
-$route['api/cart/remove/(:num)'] = 'api/cart/remove/$1';
-$route['api/orders'] = 'api/orders';
-$route['api/orders/(:num)'] = 'api/orders/view/$1';
-$route['api/users/profile'] = 'api/users/profile';
-$route['api/users/update'] = 'api/users/update';
+// Rotas do Webhook
+$route['webhook/order-status'] = 'webhook/order_status';

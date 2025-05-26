@@ -112,6 +112,7 @@ class Orders extends MY_Controller {
         if ($this->form_validation->run() === FALSE) {
             // Adicione o usuário aos dados
             $data['user'] = $this->user;
+            $data['scripts'] = ['checkout' => 'checkout.js'];
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);
@@ -170,6 +171,9 @@ class Orders extends MY_Controller {
                 // Atualizar estoque
                 $this->Stock_model->decrease_stock($item['product_id'], $item['variation_id'], $item['quantity']);
             }
+
+            // Enviar email de confirmação do pedido
+            $this->_send_order_confirmation_email($order_id);
 
             // Limpar carrinho e cupom
             $this->Cart_model->clear_cart($this->user['id']);
@@ -277,6 +281,9 @@ class Orders extends MY_Controller {
         // Atualizar status do pedido
         $this->Order_model->update_order($id, array('status' => $status));
 
+        // Enviar email de atualização de status
+        $this->_send_order_status_update_email($id, $status);
+
         $this->session->set_flashdata('success', 'Order status updated successfully');
         redirect('orders/view/' . $id);
     }
@@ -303,5 +310,98 @@ class Orders extends MY_Controller {
 
         $this->session->set_flashdata('success', 'Tracking information updated successfully');
         redirect('orders/view/' . $id);
+    }
+
+    /**
+     * Envia email de confirmação do pedido
+     */
+    private function _send_order_confirmation_email($order_id) {
+        // Carregar a biblioteca de email
+        $this->load->library('email');
+
+        // Obter dados do pedido
+        $order = $this->Order_model->get_order($order_id);
+        $items = $this->Order_model->get_order_items($order_id);
+
+        // Obter dados do usuário
+        $customer = $this->User_model->get_user_by_id($order['user_id']);
+
+        // Preparar dados para o template do email
+        $data = [
+            'order' => $order,
+            'items' => $items,
+            'customer_name' => $customer['name']
+        ];
+
+        // Carregar o template de email como uma string
+        $message = $this->load->view('emails/order_confirmation', $data, TRUE);
+
+        // Configurar o email
+        $this->email->from('noreply@mini-erp.com', 'Mini ERP');
+        $this->email->to($customer['email']);
+        $this->email->subject('Confirmação do Pedido #' . $order_id);
+        $this->email->message($message);
+
+        // Tentar enviar o email
+        if (!$this->email->send()) {
+            // Logar erro se o email não for enviado
+            log_message('error', 'Falha ao enviar email de confirmação para o pedido #' . $order_id . ': ' . $this->email->print_debugger(['headers']));
+        } else {
+            // Logar sucesso
+            log_message('info', 'Email de confirmação enviado com sucesso para o pedido #' . $order_id);
+        }
+    }
+
+    /**
+     * Envia email de atualização de status do pedido
+     */
+    private function _send_order_status_update_email($order_id, $new_status) {
+        // Carregar a biblioteca de email
+        $this->load->library('email');
+
+        // Obter dados do pedido
+        $order = $this->Order_model->get_order($order_id);
+
+        // Obter dados do usuário
+        $customer = $this->User_model->get_user_by_id($order['user_id']);
+
+        // Definir assunto baseado no status
+        $subject = 'Atualização do Pedido #' . $order_id;
+
+        // Definir mensagem baseada no status
+        $message = '<p>Olá ' . $customer['name'] . ',</p>';
+
+        switch ($new_status) {
+            case 'processing':
+                $message .= '<p>Seu pedido #' . $order_id . ' está sendo processado.</p>';
+                break;
+            case 'shipped':
+                $message .= '<p>Seu pedido #' . $order_id . ' foi enviado e está a caminho.</p>';
+                break;
+            case 'delivered':
+                $message .= '<p>Seu pedido #' . $order_id . ' foi entregue. Esperamos que esteja satisfeito!</p>';
+                break;
+            case 'canceled':
+                $message .= '<p>Seu pedido #' . $order_id . ' foi cancelado.</p>';
+                break;
+            default:
+                $message .= '<p>O status do seu pedido #' . $order_id . ' foi atualizado para ' . $new_status . '.</p>';
+        }
+
+        $message .= '<p>Para mais detalhes, acesse sua conta em nosso site.</p>';
+        $message .= '<p>Atenciosamente,<br>Mini ERP</p>';
+
+        // Configurar o email
+        $this->email->from('noreply@mini-erp.com', 'Mini ERP');
+        $this->email->to($customer['email']);
+        $this->email->subject($subject);
+        $this->email->message($message);
+
+        // Tentar enviar o email
+        if (!$this->email->send()) {
+            log_message('error', 'Falha ao enviar email de atualização de status para o pedido #' . $order_id . ': ' . $this->email->print_debugger(['headers']));
+        } else {
+            log_message('info', 'Email de atualização de status enviado com sucesso para o pedido #' . $order_id);
+        }
     }
 }

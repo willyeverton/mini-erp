@@ -93,7 +93,7 @@ class Products extends MY_Controller {
         }
 
         // Registrar scripts específicos para esta página
-        $data['scripts'] = ['products' => 'stock.js'];
+        $data['scripts'] = ['products' => 'product-view.js'];
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -115,6 +115,7 @@ class Products extends MY_Controller {
         if ($this->form_validation->run() === FALSE) {
             // Adicione o usuário aos dados
             $data['user'] = $this->user;
+            $data['scripts'] = ['products' => 'product-form.js'];
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);
@@ -207,6 +208,7 @@ class Products extends MY_Controller {
         if ($this->form_validation->run() === FALSE) {
             // Adicione o usuário aos dados
             $data['user'] = $this->user;
+            $data['scripts'] = ['products' => 'product-form.js'];
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);

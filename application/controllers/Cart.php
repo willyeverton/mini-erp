@@ -40,6 +40,8 @@ class Cart extends MY_Controller {
         // Calcular total
         $data['total'] = $data['subtotal'] - $data['discount'] + $data['shipping'];
 
+        $data['scripts'] = ['cart' => 'cart.js'];
+
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('cart/index', $data);
