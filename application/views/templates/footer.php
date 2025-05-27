@@ -1,7 +1,7 @@
 </div> <!-- Fim da row -->
 
 <div class="row">
-    <div class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+    <div id="dynamic-footer" class="dynamic-footer-container">
         <footer class="bg-dark text-white py-4 mt-5">
             <div class="container">
                 <div class="row">
@@ -41,6 +41,35 @@
 
     <!-- Utility scripts -->
     <script src="<?= base_url('assets/js/utils/alerts.js'); ?>"></script>
+
+    <!-- Footer adjustment script -->
+    <script>
+    $(document).ready(function() {
+        // Verificar se a sidebar existe e está visível
+        function adjustFooter() {
+            var $footer = $('#dynamic-footer');
+            var $sidebar = $('#sidebarMenu');
+
+            if ($sidebar.length && $sidebar.is(':visible')) {
+                // Se a sidebar existe e está visível
+                $footer.removeClass('col-12 px-4');
+                $footer.addClass('col-md-9 ml-sm-auto col-lg-10 px-md-4');
+            } else {
+                // Se a sidebar não existe ou está oculta
+                $footer.removeClass('col-md-9 ml-sm-auto col-lg-10 px-md-4');
+                $footer.addClass('col-12 px-4');
+            }
+        }
+
+        // Ajustar o footer inicialmente
+        adjustFooter();
+
+        // Ajustar quando a janela for redimensionada
+        $(window).resize(function() {
+            adjustFooter();
+        });
+    });
+    </script>
 
     <?php
     // Renderizar HTML dos componentes

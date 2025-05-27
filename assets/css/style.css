@@ -193,3 +193,18 @@ body {
   border-top-color: #333;
   animation: spinner .6s linear infinite;
 }
+
+/* Estilos para o footer dinâmico */
+.dynamic-footer-container {
+  transition: all 0.3s ease;
+}
+
+/* Para telas pequenas, sempre ocupar largura total */
+@media (max-width: 767.98px) {
+  .dynamic-footer-container {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+}
