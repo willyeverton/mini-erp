@@ -1,9 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Coupon_model extends CI_Model {
+class Coupon_model extends MY_Model {
 
-    private $table = 'coupons';
+    protected $table = 'coupons';
 
     public function __construct() {
         parent::__construct();
@@ -65,8 +65,7 @@ class Coupon_model extends CI_Model {
 
     // Excluir cupom
     public function delete_coupon($id) {
-        $this->db->where('id', $id);
-        return $this->db->delete($this->table);
+        return $this->safe_delete($this->table, ['id' => $id]);
     }
 
     // Incrementar contagem de uso

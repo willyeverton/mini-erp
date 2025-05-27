@@ -66,7 +66,7 @@ class Dashboard extends MY_Controller {
             'statusData' => json_encode($data['order_status_data']['data'])
         ];
 
-        $data['scripts'] = ['dashboard' => 'charts.js'];
+        register_js('charts', 'dashboard');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -107,7 +107,7 @@ class Dashboard extends MY_Controller {
             'salesReportOrders' => json_encode(array_column($data['sales_report'], 'orders'))
         ];
 
-        $data['scripts'] = ['dashboard' => 'reports.js'];
+        register_js('reports', 'dashboard');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);

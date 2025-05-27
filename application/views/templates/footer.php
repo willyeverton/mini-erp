@@ -39,20 +39,15 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
-    <!-- Custom JS -->
-    <script src="<?= base_url('assets/js/scripts.js'); ?>"></script>
+    <!-- Utility scripts -->
+    <script src="<?= base_url('assets/js/utils/alerts.js'); ?>"></script>
 
-    <!-- Page specific scripts -->
-    <?php if(isset($scripts) && is_array($scripts)): ?>
-        <?php foreach($scripts as $folder => $script): ?>
-            <?php if(is_array($script)): ?>
-                <?php foreach($script as $js_file): ?>
-                    <script src="<?= base_url('assets/js/' . $folder . '/' . $js_file); ?>"></script>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <script src="<?= base_url('assets/js/' . $folder . '/' . $script); ?>"></script>
-            <?php endif; ?>
-        <?php endforeach; ?>
-    <?php endif; ?>
+    <?php
+    // Renderizar HTML dos componentes
+    echo render_components();
+
+    // Carregar scripts registrados dinamicamente
+    echo get_registered_js();
+    ?>
 </body>
 </html>

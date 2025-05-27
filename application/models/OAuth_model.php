@@ -1,7 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class OAuth_model extends CI_Model {
+class OAuth_model extends MY_Model {
+
+    protected $table = 'oauth_tokens';
 
     public function __construct() {
         parent::__construct();
@@ -22,7 +24,7 @@ class OAuth_model extends CI_Model {
             'expires' => $expires
         );
 
-        $this->db->insert('oauth_tokens', $data);
+        $this->db->insert($this->table, $data);
 
         return $token;
     }
@@ -30,14 +32,13 @@ class OAuth_model extends CI_Model {
     public function validate_token($token) {
         $this->db->where('token', $token);
         $this->db->where('expires >', date('Y-m-d H:i:s'));
-        $query = $this->db->get('oauth_tokens');
+        $query = $this->db->get($this->table);
 
         return $query->row_array();
     }
 
     public function revoke_user_tokens($user_id) {
-        $this->db->where('user_id', $user_id);
-        return $this->db->delete('oauth_tokens');
+        return $this->safe_delete($this->table, ['user_id' => $user_id]);
     }
 
 }

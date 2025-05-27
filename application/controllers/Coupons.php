@@ -66,6 +66,9 @@ class Coupons extends MY_Controller {
         $data['pagination'] = $this->pagination->create_links();
         $data['search'] = $this->input->get('search');
 
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
+
         // Carregar as views
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -83,7 +86,8 @@ class Coupons extends MY_Controller {
         $this->form_validation->set_rules('discount_amount', 'Valor do Desconto', 'required|numeric|greater_than[0]');
 
         if ($this->form_validation->run() === FALSE) {
-            $data['scripts'] = ['coupons' => 'form.js'];
+
+            register_js('form', 'coupons');
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);
@@ -143,7 +147,7 @@ class Coupons extends MY_Controller {
         }
 
         if ($this->form_validation->run() === FALSE) {
-            $data['scripts'] = ['coupons' => 'form.js'];
+            register_js('form', 'coupons');
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);
@@ -188,11 +192,14 @@ class Coupons extends MY_Controller {
             show_404();
         }
 
-        // Excluir cupom
-        if ($this->Coupon_model->delete_coupon($id)) {
-            $this->session->set_flashdata('success', 'Cupom excluído com sucesso.');
+        // Excluir cupom usando o método safe_delete
+        $result = $this->Coupon_model->delete_coupon($id);
+
+        // Verificar o resultado da operação
+        if (isset($result['success']) && $result['success']) {
+            $this->session->set_flashdata('success', $result['message'] ?? 'Cupom excluído com sucesso.');
         } else {
-            $this->session->set_flashdata('error', 'Erro ao excluir cupom.');
+            $this->session->set_flashdata('error', $result['message'] ?? 'Erro ao excluir cupom.');
         }
 
         redirect('coupons');
@@ -213,6 +220,8 @@ class Coupons extends MY_Controller {
         $data['title'] = 'Detalhes do Cupom';
         $data['user'] = $this->user;
         $data['coupon'] = $coupon_data;
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);

@@ -1,21 +1,23 @@
 /**
  * Coupon Form JavaScript
  */
-document.addEventListener('DOMContentLoaded', function () {
-  const discountType = document.getElementById('discount_type');
-  const percentageSymbol = document.getElementById('discount-symbol-percentage');
-  const fixedSymbol = document.getElementById('discount-symbol-fixed');
-  const maxDiscountContainer = document.getElementById('max-discount-container');
+$(document).ready(function () {
+
+  const discountType = $('#discount_type');
+  const percentageSymbol = $('#discount-symbol-percentage');
+  const fixedSymbol = $('#discount-symbol-fixed');
+  const maxDiscountContainer = $('#max-discount-container');
+
 
   function updateDiscountType() {
-    if (discountType.value === 'percentage') {
-      percentageSymbol.style.display = 'flex';
-      fixedSymbol.style.display = 'none';
-      maxDiscountContainer.style.display = 'block';
+    if (discountType.val() === 'percentage') {
+      percentageSymbol.show();
+      fixedSymbol.hide();
+      maxDiscountContainer.show();
     } else {
-      percentageSymbol.style.display = 'none';
-      fixedSymbol.style.display = 'flex';
-      maxDiscountContainer.style.display = 'none';
+      percentageSymbol.hide();
+      fixedSymbol.show();
+      maxDiscountContainer.hide();
     }
   }
 
@@ -23,5 +25,5 @@ document.addEventListener('DOMContentLoaded', function () {
   updateDiscountType();
 
   // Evento de mudança
-  discountType.addEventListener('change', updateDiscountType);
+  discountType.on('change', updateDiscountType);
 });

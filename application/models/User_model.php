@@ -1,9 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class User_model extends CI_Model {
+class User_model extends MY_Model {
 
-    private $table = 'users';
+    protected $table = 'users';
 
     public function __construct() {
         parent::__construct();
@@ -37,12 +37,12 @@ class User_model extends CI_Model {
             // Contar novos usuários neste dia
             $this->db->where('DATE(created_at)', $day);
             $this->db->where('role', 'customer');
-            $new_customers = $this->db->count_all_results('users');
+            $new_customers = $this->db->count_all_results($this->table);
 
             // Contar total de usuários até este dia
             $this->db->where('DATE(created_at) <=', $day);
             $this->db->where('role', 'customer');
-            $total_customers = $this->db->count_all_results('users');
+            $total_customers = $this->db->count_all_results($this->table);
 
             $result[] = [
                 'date' => $day,
@@ -116,10 +116,8 @@ class User_model extends CI_Model {
 
     // Excluir usuário
     public function delete_user($id) {
-        $this->db->where('id', $id);
-        return $this->db->delete($this->table);
+        return $this->safe_delete($this->table, ['id' => $id]);
     }
-
 
     public function set_reset_token($user_id, $token) {
         $data = array(
@@ -128,13 +126,13 @@ class User_model extends CI_Model {
         );
 
         $this->db->where('id', $user_id);
-        return $this->db->update('users', $data);
+        return $this->db->update($this->table, $data);
     }
 
     public function get_user_by_reset_token($token) {
         $this->db->where('reset_token', $token);
         $this->db->where('reset_token_expires >', date('Y-m-d H:i:s'));
-        $query = $this->db->get('users');
+        $query = $this->db->get($this->table);
         return $query->row_array();
     }
 
@@ -144,7 +142,7 @@ class User_model extends CI_Model {
         );
 
         $this->db->where('id', $user_id);
-        return $this->db->update('users', $data);
+        return $this->db->update($this->table, $data);
     }
 
     public function clear_reset_token($user_id) {
@@ -154,7 +152,7 @@ class User_model extends CI_Model {
         );
 
         $this->db->where('id', $user_id);
-        return $this->db->update('users', $data);
+        return $this->db->update($this->table, $data);
     }
 
     // Contar usuários por papel

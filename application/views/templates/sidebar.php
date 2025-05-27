@@ -17,10 +17,18 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link <?= $this->router->fetch_class() == 'orders' ? 'active' : ''; ?>" href="<?= base_url('orders'); ?>">
-                            <i class="fas fa-shopping-cart"></i>
+                            <i class="fas fa-shopping-bag"></i>
                             Orders
                         </a>
                     </li>
+                    <?php if ($user && $user['role'] == 'customer'): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= $this->router->fetch_class() == 'cart' ? 'active' : ''; ?>" href="<?= base_url('cart'); ?>">
+                                <i class="fas fa-shopping-cart"></i>
+                                Cart
+                            </a>
+                        </li>
+                    <?php endif; ?>
                     <?php if ($user && $user['role'] == 'admin'): ?>
                         <li class="nav-item">
                             <a class="nav-link <?= $this->router->fetch_class() == 'users' ? 'active' : ''; ?>" href="<?= base_url('users'); ?>">

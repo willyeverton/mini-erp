@@ -30,6 +30,8 @@ class Orders extends MY_Controller {
 
         // Adicione o usuário aos dados
         $data['user'] = $this->user;
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -62,6 +64,8 @@ class Orders extends MY_Controller {
 
         // Adicione o usuário aos dados
         $data['user'] = $this->user;
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -112,7 +116,8 @@ class Orders extends MY_Controller {
         if ($this->form_validation->run() === FALSE) {
             // Adicione o usuário aos dados
             $data['user'] = $this->user;
-            $data['scripts'] = ['checkout' => 'checkout.js'];
+            // Registrar scripts para esta página
+            register_js(['checkout', 'viacep'], 'orders');
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);

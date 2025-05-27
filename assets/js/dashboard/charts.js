@@ -1,10 +1,10 @@
 /**
  * Dashboard Charts JavaScript
  */
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function () {
   // Gráfico de vendas
-  if (document.getElementById('salesChart')) {
-    var ctx = document.getElementById('salesChart').getContext('2d');
+  if ($('#salesChart').length) {
+    var ctx = $('#salesChart').get(0).getContext('2d');
     var salesChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -80,8 +80,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Gráfico de status de pedidos
-  if (document.getElementById('orderStatusChart')) {
-    var ctx2 = document.getElementById('orderStatusChart').getContext('2d');
+  if ($('#orderStatusChart').length) {
+    var ctx2 = $('#orderStatusChart').get(0).getContext('2d');
     var orderStatusChart = new Chart(ctx2, {
       type: 'doughnut',
       data: {

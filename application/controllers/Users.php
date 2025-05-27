@@ -10,12 +10,18 @@ class Users extends MY_Controller {
         $this->load->helper(['url', 'form']);
 
         // Verificar permissões de administrador
-        if (!$this->user || $this->user['role'] != 'admin') {
+        if (!$this->user) {
             redirect('auth');
         }
     }
 
     public function index() {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            redirect('auth');
+            return;
+        }
+
         // Configurar paginação
         $this->load->library('pagination');
 
@@ -66,6 +72,9 @@ class Users extends MY_Controller {
         $data['pagination'] = $this->pagination->create_links();
         $data['search'] = $this->input->get('search');
 
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
+
         // Carregar as views
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -74,6 +83,12 @@ class Users extends MY_Controller {
     }
 
     public function create() {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            redirect('auth');
+            return;
+        }
+
         $data['title'] = 'Adicionar Novo Usuário';
         $data['user'] = $this->user;
 
@@ -111,6 +126,11 @@ class Users extends MY_Controller {
     }
 
     public function edit($id = NULL) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin' && $this->user['id'] != $id) {
+            redirect('auth');
+            return;
+        }
         if (!$id) {
             show_404();
         }
@@ -173,6 +193,12 @@ class Users extends MY_Controller {
     }
 
     public function delete($id = NULL) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin') {
+            redirect('auth');
+            return;
+        }
+
         if (!$id) {
             show_404();
         }
@@ -190,17 +216,26 @@ class Users extends MY_Controller {
             redirect('users');
         }
 
-        // Excluir usuário
-        if ($this->User_model->delete_user($id)) {
-            $this->session->set_flashdata('success', 'Usuário excluído com sucesso.');
+        // Excluir usuário usando o método safe_delete
+        $result = $this->User_model->delete_user($id);
+
+        // Verificar o resultado da operação
+        if (isset($result['success']) && $result['success']) {
+            $this->session->set_flashdata('success', $result['message'] ?? 'Usuário excluído com sucesso.');
         } else {
-            $this->session->set_flashdata('error', 'Erro ao excluir usuário.');
+            $this->session->set_flashdata('error', $result['message'] ?? 'Erro ao excluir usuário.');
         }
 
         redirect('users');
     }
 
     public function view($id = NULL) {
+        // Verificar permissões de administrador
+        if ($this->user['role'] != 'admin' && $this->user['id'] != $id) {
+            redirect('auth');
+            return;
+        }
+
         if (!$id) {
             show_404();
         }
@@ -215,6 +250,9 @@ class Users extends MY_Controller {
         $data['title'] = 'Detalhes do Usuário';
         $data['user'] = $this->user;
         $data['user_data'] = $user_data;
+
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);

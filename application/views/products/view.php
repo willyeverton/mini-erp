@@ -151,7 +151,9 @@
                                 <a href="<?= site_url('products/edit/' . $product['id']); ?>" class="btn btn-warning">
                                     <i class="fas fa-edit"></i> Edit Product
                                 </a>
-                                <a href="<?= site_url('products/delete/' . $product['id']); ?>" class="btn btn-danger float-right" onclick="return confirm('Are you sure you want to delete this product?');">
+                                <a href="#" class="btn btn-danger float-right delete-btn"
+                                    data-delete-url="<?= base_url('products/delete/' . $product['id']); ?>"
+                                    data-confirm-message="Tem certeza que deseja excluir o produto '<?= htmlspecialchars($product['name']); ?>'?">
                                     <i class="fas fa-trash"></i> Delete Product
                                 </a>
                             </div>

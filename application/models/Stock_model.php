@@ -1,7 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Stock_model extends CI_Model {
+class Stock_model extends MY_Model {
+
+    protected $table = 'stock';
 
     public function __construct() {
         parent::__construct();
@@ -17,7 +19,7 @@ class Stock_model extends CI_Model {
             $this->db->where('variation_id IS NULL');
         }
 
-        $query = $this->db->get('stock');
+        $query = $this->db->get($this->table);
         $result = $query->row_array();
 
         return $result ? $result['quantity'] : 0;
@@ -32,7 +34,7 @@ class Stock_model extends CI_Model {
             $this->db->where('variation_id IS NULL');
         }
 
-        $query = $this->db->get('stock');
+        $query = $this->db->get($this->table);
 
         if ($query->num_rows() > 0) {
             // Atualizar registro existente
@@ -44,7 +46,7 @@ class Stock_model extends CI_Model {
                 $this->db->where('variation_id IS NULL');
             }
 
-            $this->db->update('stock', ['quantity' => $quantity]);
+            $this->db->update($this->table, ['quantity' => $quantity]);
         } else {
             // Inserir novo registro de estoque
             $data = [
@@ -53,7 +55,7 @@ class Stock_model extends CI_Model {
                 'quantity' => $quantity
             ];
 
-            $this->db->insert('stock', $data);
+            $this->db->insert($this->table, $data);
         }
 
         return true;
@@ -80,7 +82,7 @@ class Stock_model extends CI_Model {
 
     public function get_low_stock_products($limit = 10, $threshold = 5) {
         $this->db->select('stock.*, products.name as product_name, product_variations.name as variation_name');
-        $this->db->from('stock');
+        $this->db->from($this->table);
         $this->db->join('products', 'products.id = stock.product_id');
         $this->db->join('product_variations', 'product_variations.id = stock.variation_id', 'left');
         $this->db->where('stock.quantity <=', $threshold);

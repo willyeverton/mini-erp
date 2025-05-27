@@ -1,10 +1,10 @@
 /**
  * Dashboard Reports JavaScript
  */
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function () {
   // Gráfico de relatório de vendas
-  if (document.getElementById('salesReportChart')) {
-    var ctx = document.getElementById('salesReportChart').getContext('2d');
+  if ($('#salesReportChart').length) {
+    var ctx = $('#salesReportChart').get(0).getContext('2d');
     var salesReportChart = new Chart(ctx, {
       type: 'bar',
       data: {

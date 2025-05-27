@@ -91,7 +91,9 @@
                                                     <i class="fas fa-edit"></i> Editar
                                                 </a>
                                                 <?php if ($user_item['id'] != $user['id']): ?>
-                                                    <a href="<?= site_url('users/delete/' . $user_item['id']) ?>" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir este usuário?')">
+                                                    <a href="#" class="btn btn-danger btn-sm delete-btn"
+                                                       data-delete-url="<?= site_url('users/delete/' . $user_item['id']) ?>"
+                                                       data-confirm-message="Tem certeza que deseja excluir o usuário '<?= htmlspecialchars($user_item['name']) ?>'?">
                                                         <i class="fas fa-trash"></i> Excluir
                                                     </a>
                                                 <?php endif; ?>

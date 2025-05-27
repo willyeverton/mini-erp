@@ -1,42 +1,34 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Webhook extends CI_Controller {
+require_once APPPATH . 'core/API_Controller.php';
+
+class Webhook extends API_Controller {
 
     public function __construct() {
         parent::__construct();
         $this->load->model('Order_model');
+        $this->load->model('Stock_model');
     }
 
     /**
      * Endpoint para receber atualizações de status de pedidos
-     * Espera receber um JSON com o ID do pedido e o novo status
-     * Exemplo: {"order_id": 123, "status": "shipped"}
      */
     public function order_status() {
         // Verificar se é uma requisição POST
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->output
-                ->set_status_header(405)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Method not allowed']));
-            return;
+            return $this->json_response(['error' => 'Method not allowed'], 405);
         }
 
         // Obter o corpo da requisição
-        $json = file_get_contents('php://input');
-        $data = json_decode($json, true);
+        $data = $this->get_json_input();
 
         // Log da requisição para debug
-        $this->_log_webhook_request($json);
+        $this->_log_webhook_request(json_encode($data));
 
         // Validar dados recebidos
         if (!isset($data['order_id']) || !isset($data['status'])) {
-            $this->output
-                ->set_status_header(400)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Missing required fields']));
-            return;
+            return $this->json_response(['error' => 'Missing required fields'], 400);
         }
 
         $order_id = $data['order_id'];
@@ -45,18 +37,14 @@ class Webhook extends CI_Controller {
         // Verificar se o pedido existe
         $order = $this->Order_model->get_order($order_id);
         if (!$order) {
-            $this->output
-                ->set_status_header(404)
-                ->set_content_type('application/json')
-                ->set_output(json_encode(['error' => 'Order not found']));
-            return;
+            return $this->json_response(['error' => 'Order not found'], 404);
         }
 
         // Processar baseado no status
         if ($status === 'canceled') {
-            // Se o status for cancelado, excluir o pedido
+            // Se o status for cancelado, tratar cancelamento
             $this->_handle_order_cancellation($order);
-            $message = 'Order canceled and removed successfully';
+            $message = 'Order canceled and updated successfully';
         } else {
             // Atualizar o status do pedido
             $this->Order_model->update_order($order_id, ['status' => $status]);
@@ -64,15 +52,12 @@ class Webhook extends CI_Controller {
         }
 
         // Responder com sucesso
-        $this->output
-            ->set_status_header(200)
-            ->set_content_type('application/json')
-            ->set_output(json_encode([
-                'success' => true,
-                'message' => $message,
-                'order_id' => $order_id,
-                'status' => $status
-            ]));
+        return $this->json_response([
+            'success' => true,
+            'message' => $message,
+            'order_id' => $order_id,
+            'status' => $status
+        ]);
     }
 
     /**
@@ -83,7 +68,6 @@ class Webhook extends CI_Controller {
         $items = $this->Order_model->get_order_items($order['id']);
 
         // Restaurar estoque
-        $this->load->model('Stock_model');
         foreach ($items as $item) {
             $this->Stock_model->increase_stock(
                 $item['product_id'],

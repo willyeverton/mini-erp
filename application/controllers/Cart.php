@@ -40,7 +40,11 @@ class Cart extends MY_Controller {
         // Calcular total
         $data['total'] = $data['subtotal'] - $data['discount'] + $data['shipping'];
 
-        $data['scripts'] = ['cart' => 'cart.js'];
+        // Registrar scripts para esta página
+        register_js('cart', 'cart');
+
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);

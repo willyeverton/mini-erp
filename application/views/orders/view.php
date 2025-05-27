@@ -110,7 +110,9 @@
             </div>
             <div class="card-body">
                 <?php if($order['status'] == 'pending'): ?>
-                    <a href="<?= base_url('orders/cancel/' . $order['id']); ?>" class="btn btn-danger btn-block" onclick="return confirm('Are you sure you want to cancel this order?');">
+                    <a href="#" class="btn btn-danger btn-block delete-btn"
+                        data-delete-url="<?= site_url('orders/cancel/' . $order['id']) ?>"
+                        data-confirm-message="Tem certeza que deseja cancelar este pedido?">
                         <i class="fas fa-times"></i> Cancel Order
                     </a>
                 <?php endif; ?>

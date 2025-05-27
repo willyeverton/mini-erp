@@ -117,7 +117,9 @@
                                                 <a href="<?= site_url('coupons/toggle_status/' . $coupon['id']) ?>" class="btn <?= $coupon['active'] ? 'btn-success' : 'btn-secondary' ?> btn-sm">
                                                     <i class="fas <?= $coupon['active'] ? 'fa-toggle-on' : 'fa-toggle-off' ?>"></i>
                                                 </a>
-                                                <a href="<?= site_url('coupons/delete/' . $coupon['id']) ?>" class="btn btn-danger btn-sm" onclick="return confirm('Tem certeza que deseja excluir este cupom?')">
+                                                <a href="#" class="btn btn-danger btn-sm delete-btn"
+                                                   data-delete-url="<?= site_url('coupons/delete/' . $coupon['id']) ?>"
+                                                   data-confirm-message="Tem certeza que deseja excluir o cupom '<?= htmlspecialchars($coupon['code']) ?>'?">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
                                             </td>

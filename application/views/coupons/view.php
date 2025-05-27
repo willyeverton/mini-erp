@@ -171,7 +171,9 @@
                         <i class="fas fa-edit"></i> Editar
                     </a>
                     <a href="<?= site_url('coupons') ?>" class="btn btn-default">Voltar</a>
-                    <a href="<?= site_url('coupons/delete/' . $coupon['id']) ?>" class="btn btn-danger float-right" onclick="return confirm('Tem certeza que deseja excluir este cupom?')">
+                    <a href="#" class="btn btn-danger float-right delete-btn"
+                        data-delete-url="<?= site_url('coupons/delete/' . $coupon['id']) ?>"
+                        data-confirm-message="Tem certeza que deseja excluir este cupom?">
                         <i class="fas fa-trash"></i> Excluir
                     </a>
                 </div>

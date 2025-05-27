@@ -21,13 +21,15 @@ $(document).ready(function () {
 
     if (quantity < 0) {
       e.preventDefault();
-      alert('Quantity cannot be negative.');
+      // Usar o novo sistema de alertas em vez de alert()
+      $(this).showFormAlert('Quantity cannot be negative.', 'danger');
       return false;
     }
 
     if (action === 'subtract' && quantity > currentStock) {
       e.preventDefault();
-      alert('Cannot subtract more than current stock.');
+      // Usar o novo sistema de alertas em vez de alert()
+      $(this).showFormAlert('Cannot subtract more than current stock.', 'warning');
       return false;
     }
 

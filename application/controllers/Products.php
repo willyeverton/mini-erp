@@ -60,10 +60,13 @@ class Products extends MY_Controller {
             $this->input->get('search')
         );
 
-        $data['title'] = 'Products';
+        $data['title'] = 'Products Management';
         $data['user'] = $this->user;
         $data['pagination'] = $this->pagination->create_links();
         $data['search'] = $this->input->get('search');
+
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
@@ -92,13 +95,15 @@ class Products extends MY_Controller {
             $data['stock'] = $this->Stock_model->get_stock($id);
         }
 
-        // Registrar scripts específicos para esta página
-        $data['scripts'] = ['products' => 'product-view.js'];
+        // Registrar scripts para esta página
+        register_js('product-view', 'products');
+        // Registrar o componente de confirmação de exclusão
+        load_component('confirmation-modal');
 
         $this->load->view('templates/header', $data);
         $this->load->view('templates/sidebar', $data);
         $this->load->view('products/view', $data);
-        $this->load->view('templates/footer', $data);
+        $this->load->view('templates/footer');
     }
 
     public function create() {
@@ -115,7 +120,7 @@ class Products extends MY_Controller {
         if ($this->form_validation->run() === FALSE) {
             // Adicione o usuário aos dados
             $data['user'] = $this->user;
-            $data['scripts'] = ['products' => 'product-form.js'];
+            register_js('product-form', 'products');
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);
@@ -208,7 +213,7 @@ class Products extends MY_Controller {
         if ($this->form_validation->run() === FALSE) {
             // Adicione o usuário aos dados
             $data['user'] = $this->user;
-            $data['scripts'] = ['products' => 'product-form.js'];
+            register_js('product-form', 'products');
 
             $this->load->view('templates/header', $data);
             $this->load->view('templates/sidebar', $data);
@@ -298,9 +303,16 @@ class Products extends MY_Controller {
             show_404();
         }
 
-        $this->Product_model->delete_product($id);
+        // Excluir produto usando o método safe_delete
+        $result = $this->Product_model->delete_product($id);
 
-        $this->session->set_flashdata('success', 'Product deleted successfully');
+        // Verificar o resultado da operação
+        if (isset($result['success']) && $result['success']) {
+            $this->session->set_flashdata('success', $result['message'] ?? 'Product deleted successfully');
+        } else {
+            $this->session->set_flashdata('error', $result['message'] ?? 'Error deleting product');
+        }
+
         redirect('products');
     }
 

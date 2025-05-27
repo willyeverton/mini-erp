@@ -1,7 +1,9 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Product_model extends CI_Model {
+class Product_model extends MY_Model {
+
+    protected $table = 'products';
 
     public function __construct() {
         parent::__construct();
@@ -17,25 +19,25 @@ class Product_model extends CI_Model {
         $this->db->order_by('name', 'ASC');
 
         if ($limit !== NULL) {
-            return $this->db->get('products', $limit, $offset)->result_array();
+            return $this->db->get($this->table, $limit, $offset)->result_array();
         }
 
-        return $this->db->get('products')->result_array();
+        return $this->db->get($this->table)->result_array();
     }
 
     public function get_product($id) {
-        $query = $this->db->get_where('products', array('id' => $id));
+        $query = $this->db->get_where($this->table, array('id' => $id));
         return $query->row_array();
     }
 
     public function create_product($data) {
-        $this->db->insert('products', $data);
+        $this->db->insert($this->table, $data);
         return $this->db->insert_id();
     }
 
     public function update_product($id, $data) {
         $this->db->where('id', $id);
-        return $this->db->update('products', $data);
+        return $this->db->update($this->table, $data);
     }
 
     public function delete_product($id) {
@@ -48,8 +50,7 @@ class Product_model extends CI_Model {
         $this->db->delete('stock');
 
         // Excluir produto
-        $this->db->where('id', $id);
-        return $this->db->delete('products');
+        return $this->safe_delete($this->table, ['id' => $id]);
     }
 
     public function get_variations($product_id) {
@@ -81,19 +82,17 @@ class Product_model extends CI_Model {
 
     public function delete_variation($id) {
         // Excluir estoque da variação
-        $this->db->where('variation_id', $id);
-        $this->db->delete('stock');
+        $this->safe_delete('stock', ['variation_id' => $id]);
 
         // Excluir variação
-        $this->db->where('id', $id);
-        return $this->db->delete('product_variations');
+        $this->safe_delete('product_variations', ['id' => $id]);
     }
 
     public function search_products($keyword) {
         $this->db->like('name', $keyword);
         $this->db->or_like('description', $keyword);
         $this->db->order_by('name', 'ASC');
-        $query = $this->db->get('products');
+        $query = $this->db->get($this->table);
         return $query->result_array();
     }
 
@@ -105,7 +104,7 @@ class Product_model extends CI_Model {
         }
 
         $this->db->order_by('name', 'ASC');
-        $query = $this->db->get('products');
+        $query = $this->db->get($this->table);
         return $query->result_array();
     }
 
@@ -115,6 +114,6 @@ class Product_model extends CI_Model {
             $this->db->or_like('description', $search);
         }
 
-        return $this->db->count_all_results('products');
+        return $this->db->count_all_results($this->table);
     }
 }

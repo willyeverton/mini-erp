@@ -57,7 +57,9 @@
                     </a>
                     <a href="<?= site_url('users') ?>" class="btn btn-default">Voltar</a>
                     <?php if ($user_data['id'] != $user['id']): ?>
-                        <a href="<?= site_url('users/delete/' . $user_data['id']) ?>" class="btn btn-danger float-right" onclick="return confirm('Tem certeza que deseja excluir este usuário?')">
+                        <a href="#" class="btn btn-danger float-right delete-btn"
+                            data-delete-url="<?= site_url('users/delete/' . $user_data['id']) ?>"
+                            data-confirm-message="Tem certeza que deseja excluir este usuário?">
                             <i class="fas fa-trash"></i> Excluir
                         </a>
                     <?php endif; ?>

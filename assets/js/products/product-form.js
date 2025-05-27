@@ -1,27 +1,28 @@
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function () {
   // Image preview
-  const imageInput = document.getElementById('image');
-  if (imageInput) {
-    imageInput.addEventListener('change', function () {
+  const imageInput = $('#image');
+  if (imageInput.length) {
+    imageInput.on('change', function () {
       const file = this.files[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = function (e) {
-          document.getElementById('image-preview').src = e.target.result;
+          $('#image-preview').attr('src', e.target.result);
         }
         reader.readAsDataURL(file);
-        document.querySelector('.custom-file-label').textContent = file.name;
+        $('#image-preview').attr('src', e.target.result);
+        $('.custom-file-label').text(file.name);
       }
     });
   }
 
   // Add variation
-  const addVariationBtn = document.getElementById('add-variation');
-  if (addVariationBtn) {
-    let variationIndex = document.querySelectorAll('.variation-item').length;
+  const addVariationBtn = $('#add-variation');
+  if (addVariationBtn.length) {
+    let variationIndex = $('.variation-item').length;
 
-    addVariationBtn.addEventListener('click', function () {
-      const container = document.getElementById('variations-container');
+    addVariationBtn.on('click', function () {
+      const container = $('#variations-container');
       const html = `
                 <div class="variation-item card mb-3">
                     <div class="card-body">
@@ -43,11 +44,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
 
-      container.insertAdjacentHTML('beforeend', html);
+      container.append(html);
       variationIndex++;
 
       // Hide main stock field when variations are added
-      document.getElementById('main-stock-group').style.display = 'none';
+      $('#main-stock-group').hide();
 
       // Add event listener to remove button
       addRemoveEventListeners();
@@ -58,21 +59,19 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function addRemoveEventListeners() {
-    const removeButtons = document.querySelectorAll('.remove-variation');
-    removeButtons.forEach(function (button) {
+    const removeButtons = $('.remove-variation');
+    removeButtons.each(function () {
       // Remove existing event listeners to prevent duplicates
-      button.removeEventListener('click', removeVariationHandler);
-      // Add new event listener
-      button.addEventListener('click', removeVariationHandler);
+      $(this).off('click').on('click', removeVariationHandler);
     });
   }
 
   function removeVariationHandler() {
-    this.closest('.variation-item').remove();
+    $(this).closest('.variation-item').remove();
 
     // If no variations left, show main stock field again
-    if (document.querySelectorAll('.variation-item').length === 0) {
-      document.getElementById('main-stock-group').style.display = 'block';
+    if ($('.variation-item').length === 0) {
+      $('#main-stock-group').show();
     }
   }
 });

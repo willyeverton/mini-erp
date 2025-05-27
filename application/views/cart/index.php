@@ -4,7 +4,9 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="mb-0">Shopping Cart</h4>
-                    <a href="<?= base_url('cart/clear'); ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to clear your cart?');">
+                    <a href="#" class="btn btn-sm btn-outline-danger delete-btn"
+                        data-delete-url="<?= base_url('cart/clear') ?>"
+                        data-confirm-message="Tem certeza que deseja limpar seu carrinho?">
                         <i class="fas fa-trash"></i> Clear Cart
                     </a>
                 </div>
@@ -72,7 +74,9 @@
                                             </td>
                                             <td>$<?= number_format($item['price'] * $item['quantity'], 2); ?></td>
                                             <td>
-                                                <a href="<?= base_url('cart/remove/' . $item['id']); ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to remove this item?');">
+                                                <a href="#" class="btn btn-sm btn-danger delete-btn"
+                                                   data-delete-url="<?= site_url('cart/remove/' . $item['id']) ?>"
+                                                   data-confirm-message="Tem certeza que deseja remover o item (<?= $item['product_name']; ?>) do carrinho?">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
                                             </td>
