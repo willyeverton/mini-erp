@@ -75,7 +75,7 @@ Mini-ERP é uma solução completa para gerenciamento empresarial que combina fu
 
 1. Clone o repositório:
    ```bash
-   git clone https://github.com/seu-usuario/mini-erp.git
+   git clone https://github.com/willyeverton/mini-erp
    cd mini-erp
    ```
 
