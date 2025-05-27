@@ -2,7 +2,7 @@
 
 Um sistema completo de gestão empresarial (ERP) com recursos integrados de e-commerce, desenvolvido em PHP com o framework CodeIgniter. Este sistema inclui módulos de produtos, estoque, pedidos, cupons, clientes e relatórios, fornecendo uma solução completa para pequenas e médias empresas.
 
-![Mini-ERP Screenshot](path/to/screenshot.png)
+![Mini-ERP Screenshot](screenshot.png)
 
 ## Índice
 - [Visão Geral](#visão-geral)
